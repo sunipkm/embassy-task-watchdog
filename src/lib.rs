@@ -601,14 +601,14 @@ pub mod embassy_rp {
     /// methods to register tasks and feed the watchdog.  You probably don't
     /// want to access the other methods directly - use [`watchdog_run()`] to
     /// handle running the task-watchdog.
-    pub(crate) struct WatchdogRunner<const N: usize> {
+    pub(crate) struct RpWatchdogOwner<const N: usize> {
         watchdog: embassy_sync::mutex::Mutex<
             embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex,
             core::cell::RefCell<WatchdogContainer<N, RpWatchdog, EmbassyClock>>,
         >,
     }
 
-    impl<const N: usize> WatchdogRunner<N> {
+    impl<const N: usize> RpWatchdogOwner<N> {
         /// Create a new Embassy-compatible watchdog runner.
         pub(crate) fn new(
             hw_watchdog: embassy_rp::Peri<'static, RpWatchdogPeripheral>,
@@ -676,10 +676,10 @@ pub mod embassy_rp {
     /// There is an equivalent version of this when using the `alloc` feature
     /// which does not include the `const N: usize` type.
     pub struct WatchdogTask<const N: usize> {
-        runner: &'static WatchdogRunner<N>,
+        runner: &'static RpWatchdogOwner<N>,
     }
 
-    impl<const N: usize> WatchdogRunner<N> {
+    impl<const N: usize> RpWatchdogOwner<N> {
         /// Used to create a watchdog task when not using the alloc feature.
         ///
         /// There is an equivalent version of this when using the `alloc` feature
@@ -726,7 +726,7 @@ pub mod embassy_rp {
     ///
     /// N defaults to 32 so the user doesn't have to write it.
     pub struct RpWatchdogRunner<const N: usize = 32> {
-        inner: WatchdogRunner<N>,
+        inner: RpWatchdogOwner<N>,
     }
 
     impl<const N: usize> RpWatchdogRunner<N> {
@@ -735,7 +735,7 @@ pub mod embassy_rp {
             config: WatchdogConfig<EmbassyClock>,
         ) -> Self {
             Self {
-                inner: WatchdogRunner::new(hw_watchdog, config),
+                inner: RpWatchdogOwner::new(hw_watchdog, config),
             }
         }
 
@@ -743,9 +743,10 @@ pub mod embassy_rp {
         pub async fn register_desc(
             &'static self,
             desc: &'static TaskDesc,
+            max_duration: <EmbassyClock as Clock>::Duration,
         ) -> BoundWatchdog<'static, N> {
             let id = TaskKey::from_desc(desc);
-            self.inner.register_task(&id, (desc.max_duration)()).await;
+            self.inner.register_task(&id, max_duration).await;
             BoundWatchdog::new(&self.inner, id)
         }
 
@@ -756,34 +757,8 @@ pub mod embassy_rp {
             // use your existing create_task() on inner
             // (we need a &'static self; enforce via caller)
             // SAFETY: self is &'static in signature.
-            let inner: &'static WatchdogRunner<N> = unsafe { &*(&self.inner as *const _) };
+            let inner: &'static RpWatchdogOwner<N> = unsafe { &*(&self.inner as *const _) };
             inner.create_task()
-        }
-
-        // Also forward start/check/reset_reason/etc if desired:
-        #[inline(always)]
-        pub async fn start(&self) {
-            self.inner.start().await;
-        }
-
-        #[inline(always)]
-        pub async fn get_check_interval(&self) -> <EmbassyClock as super::Clock>::Duration {
-            self.inner.get_check_interval().await
-        }
-
-        #[inline(always)]
-        pub async fn check_tasks(&self) -> bool {
-            self.inner.check_tasks().await
-        }
-
-        #[inline(always)]
-        pub async fn trigger_reset(&self) -> ! {
-            self.inner.trigger_reset().await
-        }
-
-        #[inline(always)]
-        pub async fn reset_reason(&self) -> Option<super::ResetReason> {
-            self.inner.reset_reason().await
         }
     }
 

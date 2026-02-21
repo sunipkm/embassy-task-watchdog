@@ -5,7 +5,6 @@ use embassy_time::Duration;
 #[doc(hidden)]
 pub struct TaskDesc {
     pub name: &'static str,
-    pub max_duration: fn() -> Duration,
 }
 
 /// Auto-generated ID type used internally by the auto-watchdog path.
@@ -49,13 +48,13 @@ pub struct BoundWatchdog<'a, const N: usize>
 where
     'a: 'static,
 {
-    runner: &'a crate::embassy_rp::WatchdogRunner<N>,
+    runner: &'a crate::embassy_rp::RpWatchdogOwner<N>,
     id: TaskKey,
 }
 
 impl<'a, const N: usize> BoundWatchdog<'a, N> {
     #[inline(always)]
-    pub(crate) fn new(runner: &'a crate::embassy_rp::WatchdogRunner<N>, id: TaskKey) -> Self {
+    pub(crate) fn new(runner: &'a crate::embassy_rp::RpWatchdogOwner<N>, id: TaskKey) -> Self {
         Self { runner, id }
     }
 

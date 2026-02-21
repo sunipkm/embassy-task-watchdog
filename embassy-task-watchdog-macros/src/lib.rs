@@ -96,26 +96,21 @@ pub fn task(attr: TokenStream, item: TokenStream) -> TokenStream {
         "__EMBASSY_TASK_WATCHDOG_DESC_{}",
         fn_ident.to_string().to_uppercase()
     );
-    let maxfn_ident = format_ident!("__embassy_task_watchdog_max_{}", fn_ident);
+    // let maxfn_ident = format_ident!("__embassy_task_watchdog_max_{}", fn_ident);
 
     let max_expr = args.max_duration;
 
     let expanded = quote! {
-        #[inline(always)]
-        const fn #maxfn_ident() -> ::embassy_time::Duration {
-            #max_expr
-        }
 
         // Unique descriptor: address acts as identity (no linker section)
         static #desc_ident: ::embassy_task_watchdog::TaskDesc = ::embassy_task_watchdog::TaskDesc {
             name: ::core::stringify!(#fn_ident),
-            max_duration: #maxfn_ident,
         };
 
         #[embassy_executor::task]
         #vis #sig {
             // Convert runner ref into a per-task bound watchdog
-            let #wd_ident = #wd_ident.register_desc(&#desc_ident).await;
+            let #wd_ident = #wd_ident.register_desc(&#desc_ident, #max_expr).await;
 
             // User body now sees #wd_ident: BoundWatchdog
             #block
