@@ -1,0 +1,44 @@
+[package]
+name = "task-stm32"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+embassy-stm32 = { version = "0.5", features = [
+    "defmt",
+    "memory-x",
+    "stm32f091rc",
+    "time-driver-tim2",
+    "exti",
+    "unstable-pac",
+] }
+cortex-m = { version = "0.7.6", features = [
+    "inline-asm",
+    "critical-section-single-core",
+] }
+cortex-m-rt = "0.7"
+defmt = "1.0"
+defmt-rtt = "1.0"
+panic-probe = { version = "1.0", features = ["print-defmt"] }
+embassy-sync = { version = "0.7.2", features = ["defmt"] }
+embassy-executor = { version = "0.9", features = [
+    "arch-cortex-m",
+    "executor-thread",
+    "executor-interrupt",
+    "defmt",
+] }
+embassy-time = { version = "0.5", features = [
+    "defmt",
+    "defmt-timestamp-uptime",
+    "tick-hz-32_768",
+] }
+embedded-hal-1 = { package = "embedded-hal", version = "1.0" }
+static_cell = "2"
+portable-atomic = { version = "1.5", features = ["unsafe-assume-single-core"] }
+embassy-task-watchdog = { version = "0.0.1", path = "../../embassy-task-watchdog", features = [
+    "defmt",
+    "stm32",
+] }
+
+[profile.release]
+debug = 2

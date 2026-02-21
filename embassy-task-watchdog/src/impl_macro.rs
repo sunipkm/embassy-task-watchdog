@@ -6,7 +6,7 @@ macro_rules! impl_watchdog {
         use paste::paste;
         paste!{
             use $crate::{MAX_TASKS, runtime::WatchdogOwner};
-            #[doc(hidden)]
+            /// The WatchdogRunner for this family of watchdogs.  This is the struct you pass to the [`watchdog_run`] function.
             pub struct [<$Family WatchdogRunner>]<const N: usize = MAX_TASKS> {
                 runner: &'static WatchdogOwner<N, [<$Family Watchdog>]>,
             }
@@ -88,29 +88,12 @@ macro_rules! impl_watchdog {
                 }
             }
 
-            // existing imports...
-            // use embassy_rp::peripherals::WATCHDOG as RpWatchdogPeripheral;
-
-            /// Auto-ID watchdog runner: fixes I = TaskKey.
-            ///
-            /// N defaults to 32 so the user doesn't have to write it.
+            /// The WatchdogSetup for this family of watchdogs.  This is the struct you create with `new()` and pass to the `build()` function to get the WatchdogRunner and TaskWatchdog.
             pub struct [<$Family WatchdogSetup>]<const N: usize = MAX_TASKS> {
                 inner: WatchdogOwner<N, [<$Family Watchdog>]>,
             }
 
             impl<const N: usize> [<$Family WatchdogSetup>]<N> {
-
-                // #[inline(always)]
-                // pub async fn register_desc(
-                //     &'static self,
-                //     desc: &'static TaskDesc,
-                //     max_duration: embassy_time::Duration,
-                // ) -> RpTaskWatchdog<'static, N> {
-                //     let id = TaskKey::from_desc(desc);
-                //     self.inner.register_task(&id, max_duration).await;
-                //     RpTaskWatchdog::new(&self.inner, id)
-                // }
-
                 #[inline(always)]
                 #[must_use]
                 /// Build the WatchdogRunner and TaskWatchdog for this family of watchdogs.
@@ -134,7 +117,7 @@ macro_rules! impl_watchdog {
             }
 
             #[derive(Clone, Copy)]
-            /// A per-task bound handle that lets the task call `feed()` without IDs.
+            /// A per-task bound handle that lets the task call [`feed`] without IDs.
             /// 
             /// Pass a static reference to this struct to the task, decorated by
             /// [`embassy_task_watchdog::task`] as the first argument.

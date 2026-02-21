@@ -69,6 +69,21 @@ fn first_param_ident(fn_item: &ItemFn) -> Result<Ident> {
 }
 
 #[proc_macro_attribute]
+/// The [`task`] decorator macro is used in the place of [`embassy_executor::task`] to create an async task that can be monitored by the task-watchdog.  It is used like this, for a task that feeds the watchdog every 1000ms and is considered stalled if it goes more than 2000ms without feeding:
+/// ```rust,no_run
+/// # #![no_std]
+/// # #![no_main]
+/// # use embassy_time::{Duration, Timer};
+/// #[task(max_duration = Duration::from_millis(2000))]
+/// async fn my_task(watchdog: TaskWatchdog) {
+///     loop {
+///       watchdog.feed().await; // Feed the watchdog to indicate the task is still alive
+///        // Do some work
+///        Timer::after(Duration::from_millis(1000)).await;
+///     }
+/// }
+/// ```
+/// The first argument to the task must be a static reference to the [`embassy_task_watchdog::TaskWatchdog`] for the task to register itself with.  The macro will convert this into a per-task bound watchdog that the user can feed to indicate the task is still alive.  The `max_duration` argument specifies how long the watchdog should wait for a feed before considering the task to be stalled.  This is required to be able to detect stalls, and should be set to a value that is longer than the longest expected time between feeds in the task.
 pub fn task(attr: TokenStream, item: TokenStream) -> TokenStream {
     let args = parse_macro_input!(attr as TaskArgs);
     let f = parse_macro_input!(item as ItemFn);

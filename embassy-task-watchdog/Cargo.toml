@@ -15,8 +15,10 @@ categories = ["embedded", "no-std", "asynchronous", "hardware-support"]
 # Default features (none)
 default = []
 
+# Development features - enable support for specific chips when developing on those chips.  Note that these features are not intended for use in production code, and may include additional dependencies and features that are not necessary for production use.
 dev-stm32c031c6 = ["stm32", "embassy-stm32/stm32c031c6"]
 
+# STM32 support - enable chip-specific features to target the specific chip with `embassy-stm32` in your Cargo.toml.  Note that some features (e.g. `defmt-embassy-stm32`) may require additional features to be enabled (e.g. `defmt-embassy`).
 stm32 = [
   "dep:embassy-stm32",
   "cortex-m/critical-section-single-core",
@@ -30,12 +32,11 @@ defmt-embassy-stm32 = [
   "panic-probe/print-defmt",
 ]
 
-
+# Development features for RP2350 - enable support for RP2350 when developing on that chip.  Note that this feature is not intended for use in production code, and may include additional dependencies and features that are not necessary for production use.
 dev-rp235xa = ["rp", "embassy-rp/rp235xa"]
-# Use for embassy (async support) for the specified microcontroller 
-# rp2040 = ["dep:embassy-rp", "embassy-rp/rp2040"]
-# rp235xa = ["dep:embassy-rp", "embassy-rp/rp235xa"]
-# rp235xb = ["dep:embassy-rp", "embassy-rp/rp235xb"]
+
+# RP2040/RP2350 support - enable feature `rp2040`, `rp235xa` or `rp235xb` to target the specific chip
+# with `embassy-rp` in your Cargo.toml to add support for the specific chip.
 rp = ["dep:embassy-rp"]
 
 # Use alongside rp2040/rp2350/stm32/esp32-embassy to add defmt support 
@@ -69,14 +70,12 @@ embassy-rp = { version = "0.9", features = [
   "unstable-pac",
 ], optional = true, default-features = false }
 embassy-stm32 = { version = "0.5", features = [
-  "memory-x",
-  "time-driver-any",
   "unstable-pac",
   "exti",
   "chrono",
 ], default-features = false, optional = true }
 embassy-embedded-hal = { version = "0.5" }
-portable-atomic = { version = "1.10", features = ["critical-section"] }
+portable-atomic = { version = "1.10", default-features = false }
 cortex-m = { version = "0.7", features = ["inline-asm"] }
 cortex-m-rt = { version = "0.7" }
 critical-section = { version = "1.2" }
@@ -92,8 +91,8 @@ test = false
 [package.metadata.docs.rs]
 # Due to limitations in docs.rs, we need to specify features/targets.  This
 # means that full documentation for all features won't be provided.
-features = ["rp2350a", "rp2350b", "rp2040", "defmt-embassy-rp"]
-targets = ["thumbv6m-none-eabi", "thumbv8m.main-none-eabihf"]
+features = ["rp", "stm32", "defmt-embassy-rp"]
+targets = ["thumbv6m-none-eabi",  "thumbv8m.main-none-eabihf"]
 
 [profile.dev]
 opt-level = "s"
