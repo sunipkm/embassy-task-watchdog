@@ -1,5 +1,5 @@
 [target.thumbv6m-none-eabi]
-runner = 'probe-rs run --chip STM32F091RCTX'
+runner = 'probe-rs run --chip STM32F103C8'
 
 rustflags = [
     "-C",
@@ -11,7 +11,7 @@ rustflags = [
 ]
 
 [build]
-target = "thumbv6m-none-eabi"
+target = "thumbv7m-none-eabi"
 
 [env]
 DEFMT_LOG = "trace"

@@ -1,6 +1,6 @@
 {
     // Targets
-    "rust-analyzer.cargo.target": "thumbv7m-none-eabi",
+    "rust-analyzer.cargo.target": "thumbv6m-none-eabi",
     "rust-analyzer.cargo.noDefaultFeatures": true,
     "rust-analyzer.cargo.allTargets": false,
 
