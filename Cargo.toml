@@ -1,5 +1,5 @@
 [package]
-name = "rp-task-watchdog"
+name = "embassy-task-watchdog"
 version = "0.0.1"
 edition = "2024"
 authors = ["Piers Finlayson <piers@piers.rocks>"]
@@ -7,22 +7,24 @@ description = "A robust, flexible watchdog management library for embedded syste
 documentation = "https://docs.rs/task-watchdog"
 repository = "https://github.com/piersfinlayson/task-watchdog"
 license = "MIT OR Apache-2.0"
-keywords = ["embedded", "watchdog", "embassy", "no_std", "embedded-hal"]
+keywords = ["embedded", "watchdog", "embassy", "rp", "pi pico", "no_std"]
 categories = ["embedded", "no-std", "asynchronous", "hardware-support"]
 
-# [workspace]
-# members = [
-#     "examples",
-# ]
+[workspace]
+members = [
+  "examples/task-pico2",
+  "embassy-task-watchdog-macros",
+]
+
 
 [features]
 # Default features (none)
-default = ["rp2350a-embassy"]
+default = []
 
 # Use for embassy (async support) for the specified microcontroller 
-rp2040-embassy = ["embassy-common", "embassy-rp/rp2040"]
-rp2350a-embassy = ["embassy-common", "embassy-rp/rp235xa"]
-rp2350b-embassy = ["embassy-common", "embassy-rp/rp235xb"]
+rp2040 = ["embassy-rp/rp2040"]
+rp235xa = ["embassy-rp/rp235xa"]
+rp235xb = ["embassy-rp/rp235xb"]
 
 # Use alongside rp2040/rp2350/stm32/esp32-embassy to add defmt support 
 defmt-embassy-rp = [
@@ -34,13 +36,8 @@ defmt-embassy-rp = [
 
 # Use defmt logging
 defmt = ["dep:defmt"]
-# Dynamically allocate memory for task monitoring.  If not enabled, a fixed
-# size task array will be used (and not enabling this is the recommended
-# approach for embedded devices).
-alloc = []
 
 # The following features are used internally - do not specify explicitly
-embassy = ["dep:embassy-sync", "dep:embassy-time", "dep:embassy-executor"]
 defmt-embassy = [
   "dep:defmt",
   "defmt",
@@ -48,42 +45,36 @@ defmt-embassy = [
   "embassy-sync/defmt",
   "embassy-time/defmt",
 ]
-cortex-m = ["dep:cortex-m"]
-embassy-common = [
-  "embassy",
-  "embassy-executor/arch-cortex-m",
-  "cortex-m",
-  "dep:cortex-m-rt",
-]
 
 [dependencies]
-defmt = { version = "0.3", optional = true }
-embassy-sync = { version = "0.7", optional = true }
-embassy-time = { version = "0.5", optional = true }
-embassy-executor = { version = "0.9", optional = true }
+defmt = { version = "1.0", optional = true }
+embassy-sync = { version = "0.7" }
+embassy-time = { version = "0.5" }
+embassy-executor = { version = "0.9", features = ["arch-cortex-m"] }
 embassy-rp = { version = "0.9", features = [
   "time-driver",
-], optional = true, default-features = false }
-embassy-embedded-hal = { version = "0.5.0", optional = true }
+  "unstable-pac",
+] }
+embassy-embedded-hal = { version = "0.5" }
 portable-atomic = { version = "1.10", features = ["critical-section"] }
-cortex-m = { version = "0.7.6", features = ["inline-asm"], optional = true }
-cortex-m-rt = { version = "0.7.0", optional = true }
-embedded-hal = { version = "1.0", optional = true }
-critical-section = { version = "1.2.0", optional = true }
+cortex-m = { version = "0.7", features = ["inline-asm"] }
+cortex-m-rt = { version = "0.7" }
+critical-section = { version = "1.2" }
+embassy-task-watchdog-macros = { path = "./embassy-task-watchdog-macros" }
 
-# [lib]
-# name = "task_watchdog"
-# path = "src/lib.rs"
-# test = false
+[lib]
+name = "embassy_task_watchdog"
+path = "src/lib.rs"
+test = false
 
-# [package.metadata.docs.rs]
-# # Due to limitations in docs.rs, we need to specify features/targets.  This
-# # means that full documentation for all features won't be provided.
-# features = ["rp2350-embassy","defmt-embassy-rp", "rp2350-hal"]
-# targets = [ "thumbv8m.main-none-eabihf" ]
+[package.metadata.docs.rs]
+# Due to limitations in docs.rs, we need to specify features/targets.  This
+# means that full documentation for all features won't be provided.
+features = ["rp2350a", "rp2350b", "rp2040", "defmt-embassy-rp"]
+targets = ["thumbv6m-none-eabi", "thumbv8m.main-none-eabihf"]
 
-# [profile.dev]
-# opt-level = "s"
+[profile.dev]
+opt-level = "s"
 
-# [profile.release]
-# debug = 2
+[profile.release]
+debug = 2
