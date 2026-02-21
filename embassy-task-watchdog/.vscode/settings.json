@@ -1,0 +1,11 @@
+{
+    // Targets
+    "rust-analyzer.cargo.target": "thumbv8m.main-none-eabihf",
+    "rust-analyzer.cargo.features": ["dev-stm32c031c6", "dev-rp235xa"],
+    // "rust-analyzer.cargo.features": ["dev-rp235xa"],
+    "rust-analyzer.cargo.noDefaultFeatures": true,
+    "rust-analyzer.cargo.allTargets": false,
+
+    // Clippy settings
+    "rust-analyzer.check.command": "clippy",
+}

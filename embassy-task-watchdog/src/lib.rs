@@ -217,6 +217,12 @@ mod log_impl {
 #[cfg(not(feature = "defmt"))]
 use log_impl::*;
 
+mod config {
+    #![allow(unused)]
+    include!(concat!(env!("OUT_DIR"), "/config.rs"));
+}
+pub(crate) use crate::config::MAX_TASKS;
+
 /// Represents a hardware-level watchdog that can be fed and reset the system.
 pub trait HardwareWatchdog {
     /// Start the hardware watchdog with the given timeout.
@@ -271,11 +277,20 @@ impl WatchdogConfig {
     /// Create a default configuration with standard timeout values:
     /// - Hardware timeout: 5000ms
     /// - Check interval: 1000ms
-    pub fn default() -> Self {
+    fn default() -> Self {
         Self::new(
             embassy_time::Duration::from_millis(5000),
             embassy_time::Duration::from_millis(1000),
         )
+    }
+}
+
+impl Default for WatchdogConfig {
+    /// Create a default configuration with standard timeout values:
+    /// - Hardware timeout: 5000ms
+    /// - Check interval: 1000ms
+    fn default() -> Self {
+        Self::default()
     }
 }
 
@@ -285,19 +300,28 @@ pub enum Error {
     NoSlotsAvailable,
 }
 
-/// An async implementation of task-watchdog for use with the RP2040 and RP2350
+mod impl_macro;
+
+/// An async implementation of embassy-task-watchdog for use with the RP2040 and RP2350
 /// embassy implementations.  There are also stm32 and nRF equivalents of this
 /// module.
 ///
-/// This module requires either the `rp2040-embassy` or `rp2350-embassy`
-/// feature.
+/// This module requires the `rp` feature flag to be enabled.
 ///
-/// See the [`embassy`](https://github.com/piersfinlayson/task-watchdog/blob/main/examples/src/embassy.rs)
-/// example for how to use this module.
-///
-/// There is an equivalent `embassy_stm32` module for STM32, but due to
-/// docs.rs limitations it is not documented here.  See the above example for
-/// usage of that module.  `embassy_nrf` and `embassy_rsp32` also exist.
+/// There is an equivalent `embassy_stm32` module for STM32, enabled by
+/// the `stm32` feature flag, and an `embassy_nrf` module for nRF, enabled by the
+/// `nrf` feature flag.
+#[cfg(feature = "rp")]
 pub mod embassy_rp;
 
-// pub mod embassy_stm32;
+/// An async implementation of embassy-task-watchdog for use with the RP2040 and RP2350
+/// embassy implementations.  There are also stm32 and nRF equivalents of this
+/// module.
+///
+/// This module requires the `stm32` feature flag to be enabled.
+///
+/// There is an equivalent `embassy_rp` module for RP2040 and RP2350, enabled by
+/// the `rp` feature flag, and an `embassy_nrf` module for nRF, enabled by the
+/// `nrf` feature flag.
+#[cfg(feature = "stm32")]
+pub mod embassy_stm32;

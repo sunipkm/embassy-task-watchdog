@@ -4,7 +4,7 @@ use defmt_rtt as _;
 use embassy_executor::Spawner;
 use embassy_rp::config::Config;
 use embassy_task_watchdog::WatchdogConfig;
-use embassy_task_watchdog::embassy_rp::{Watchdog, WatchdogIface, WatchdogTask, watchdog_run};
+use embassy_task_watchdog::embassy_rp::{RpWatchdogRunner, TaskWatchdog, Watchdog, watchdog_run};
 use embassy_time::{Duration, Timer};
 use panic_probe as _;
 use static_cell::StaticCell;
@@ -35,12 +35,12 @@ async fn main(spawner: Spawner) {
 }
 // Provide a simple embassy task for the watchdog
 #[embassy_executor::task]
-async fn watchdog_task(watchdog: WatchdogTask) -> ! {
+async fn watchdog_task(watchdog: RpWatchdogRunner) -> ! {
     watchdog_run(watchdog).await
 }
 // Implement your main task
 #[embassy_task_watchdog::task(max_duration = Duration::from_millis(1500))]
-async fn main_task(watchdog: WatchdogIface) -> ! {
+async fn main_task(watchdog: TaskWatchdog) -> ! {
     loop {
         // Feed the watchdog
         watchdog.feed().await;
@@ -50,7 +50,7 @@ async fn main_task(watchdog: WatchdogIface) -> ! {
 }
 // Implement your second task
 #[embassy_task_watchdog::task(max_duration = Duration::from_millis(2000))]
-async fn second_task(watchdog: WatchdogIface) -> ! {
+async fn second_task(watchdog: TaskWatchdog) -> ! {
     loop {
         // Feed the watchdog
         watchdog.feed().await;
