@@ -176,9 +176,9 @@
 
 mod runtime;
 #[doc(hidden)]
-pub(crate) use runtime::TaskKey;
+pub use runtime::TaskDesc;
 #[doc(hidden)]
-pub use runtime::{BoundWatchdog, TaskDesc};
+pub(crate) use runtime::TaskKey;
 
 pub use embassy_task_watchdog_macros::task;
 
@@ -218,9 +218,9 @@ mod log_impl {
 use log_impl::*;
 
 /// Represents a hardware-level watchdog that can be fed and reset the system.
-pub trait HardwareWatchdog<C: Clock> {
+pub trait HardwareWatchdog {
     /// Start the hardware watchdog with the given timeout.
-    fn start(&mut self, timeout: C::Duration);
+    fn start(&mut self, timeout: embassy_time::Duration);
 
     /// Feed the hardware watchdog to prevent a system reset.
     fn feed(&mut self);
@@ -245,107 +245,38 @@ pub enum ResetReason {
 
 /// Configuration for the watchdog.
 #[derive(Debug, Clone, Copy)]
-pub struct WatchdogConfig<C: Clock> {
+pub struct WatchdogConfig {
     /// Timeout to start the hardware watchdog with.
-    pub hardware_timeout: C::Duration,
+    pub hardware_timeout: embassy_time::Duration,
 
     /// Interval at which to check if tasks have fed the watchdog.  Must be
     /// less than the hardware timeout, or the hardware watchdog will reset
     /// the system, before the task-watchdog has a chance to check tasks and
     /// feed it.
-    pub check_interval: C::Duration,
+    pub check_interval: embassy_time::Duration,
 }
 
-impl<C: Clock> WatchdogConfig<C> {
+impl WatchdogConfig {
     /// Create a new configuration with specified timeout values
-    pub fn new(hardware_timeout_ms: u64, check_interval_ms: u64, clock: &C) -> Self {
+    pub fn new(
+        hardware_timeout: embassy_time::Duration,
+        check_interval: embassy_time::Duration,
+    ) -> Self {
         Self {
-            hardware_timeout: clock.duration_from_millis(hardware_timeout_ms),
-            check_interval: clock.duration_from_millis(check_interval_ms),
+            hardware_timeout,
+            check_interval,
         }
     }
 
     /// Create a default configuration with standard timeout values:
     /// - Hardware timeout: 5000ms
     /// - Check interval: 1000ms
-    pub fn default(clock: &C) -> Self {
-        Self::new(5000, 1000, clock)
+    pub fn default() -> Self {
+        Self::new(
+            embassy_time::Duration::from_millis(5000),
+            embassy_time::Duration::from_millis(1000),
+        )
     }
-}
-
-/// Represents a task monitored by the watchdog.
-#[derive(Debug, Clone)]
-struct Task<C: Clock> {
-    /// The task identifier.
-    #[allow(dead_code)]
-    id: TaskKey,
-
-    /// The last time the task was fed.
-    last_feed: C::Instant,
-
-    /// Maximum duration between feeds.
-    max_duration: C::Duration,
-}
-
-impl<C: Clock> Task<C> {
-    /// Creates a new Task object for registration with the watchdog.
-    pub fn new(id: TaskKey, max_duration: C::Duration, clock: &C) -> Self {
-        Self {
-            id,
-            last_feed: clock.now(),
-            max_duration,
-        }
-    }
-
-    /// Feed the task to indicate it's still active.
-    fn feed(&mut self, clock: &C) {
-        self.last_feed = clock.now();
-    }
-
-    /// Check if this task has starved the watchdog.
-    fn is_starved(&self, clock: &C) -> bool {
-        clock.has_elapsed(self.last_feed, &self.max_duration)
-    }
-}
-
-/// A trait for time-keeping implementations.
-pub trait Clock {
-    /// A type representing a specific instant in time.
-    type Instant: Copy;
-
-    /// A type representing a duration of time
-    type Duration: Copy;
-
-    /// Get the current time.
-    fn now(&self) -> Self::Instant;
-
-    /// Calculate the duration elapsed since the given instant.
-    fn elapsed_since(&self, instant: Self::Instant) -> Self::Duration;
-
-    /// Check if a duration has passed since the given instant.
-    fn has_elapsed(&self, instant: Self::Instant, duration: &Self::Duration) -> bool;
-
-    /// Create a duration from milliseconds.
-    fn duration_from_millis(&self, millis: u64) -> Self::Duration;
-}
-
-/// A Watchdog that monitors multiple tasks and feeds a hardware watchdog accordingly.
-struct WatchdogContainer<const N: usize, W, C>
-where
-    W: HardwareWatchdog<C>,
-    C: Clock,
-{
-    /// The hardware watchdog.
-    hw_watchdog: W,
-
-    /// Tasks being monitored.
-    tasks: [Option<Task<C>>; N],
-
-    /// Configuration.
-    config: WatchdogConfig<C>,
-
-    /// Clock for time-keeping.
-    clock: C,
 }
 
 /// Errors that can occur when interacting with the watchdog.
@@ -354,182 +285,6 @@ pub enum Error {
     NoSlotsAvailable,
 }
 
-impl<W: HardwareWatchdog<C>, C: Clock, const N: usize> WatchdogContainer<N, W, C> {
-    /// Create a new watchdog with the given hardware watchdog and configuration.
-    ///
-    /// Arguments:
-    /// * `hw_watchdog` - The hardware watchdog to use.
-    /// * `config` - The configuration for the watchdog.
-    /// * `clock` - The clock implementation to use for time-keeping.
-    fn new(hw_watchdog: W, config: WatchdogConfig<C>, clock: C) -> Self {
-        Self {
-            hw_watchdog,
-            tasks: [const { None }; N],
-            config,
-            clock,
-        }
-    }
-
-    /// Register a task with the watchdog.
-    ///
-    /// The task will be monitored by the watchdog.
-    ///
-    /// Arguments:
-    /// * `id` - The task identifier.
-    /// * `max_duration` - The maximum duration between feeds.  If there is
-    ///   a gap longer than this, the watchdog will trigger.
-    ///
-    /// # Errors
-    ///
-    /// If there are no available slots to register the task, an error will be
-    /// returned.
-    fn register_task(&mut self, id: &TaskKey, max_duration: C::Duration) -> Result<(), Error> {
-        // Find an empty slot
-        for slot in &mut self.tasks {
-            if slot.is_none() {
-                *slot = Some(Task::new(*id, max_duration, &self.clock));
-                debug!("Registered task: {:?}", id);
-                return Ok(());
-            }
-        }
-
-        // No empty slots available
-        error!("Failed to register task: {:?} - no slots available", id);
-        Err(Error::NoSlotsAvailable)
-    }
-
-    fn deregister_task(&mut self, id: &TaskKey) {
-        for slot in &mut self.tasks {
-            if let Some(task) = slot
-                && task.id == *id
-            {
-                *slot = None;
-                debug!("Deregistered task: {:?}", id);
-                return;
-            }
-        }
-        info!("Attempted to deregister unknown task: {:?}", id);
-    }
-
-    fn feed(&mut self, id: &TaskKey) {
-        let fed = self.tasks.iter_mut().flatten().any(|task| {
-            if task.id == *id {
-                task.feed(&self.clock);
-                true
-            } else {
-                false
-            }
-        });
-
-        if !fed {
-            warn!("Attempt to feed unknown task: {:?}", id);
-        }
-    }
-
-    /// Start the watchdog.
-    ///
-    /// This starts the hardware watchdog.  You must run the watchdog task
-    /// now to monitor the tasks.
-    fn start(&mut self) {
-        // Feed all registered tasks
-        self.tasks.iter_mut().flatten().for_each(|task| {
-            task.feed(&self.clock);
-        });
-
-        // Start the hardware watchdog
-        self.hw_watchdog.start(self.config.hardware_timeout);
-
-        info!("Watchdog started");
-    }
-
-    /// Check if any tasks have starved the watchdog and take appropriate action.
-    fn check(&mut self) -> bool {
-        // Check if any tasks have starved
-        let mut starved = false;
-        self.tasks.iter_mut().flatten().for_each(|task| {
-            if task.is_starved(&self.clock) {
-                error!("Task {:?} has starved the watchdog", task.id);
-                starved = true;
-            }
-        });
-
-        // Either feed the hardware watchdog or return that we have a starved
-        // task
-        if !starved {
-            self.hw_watchdog.feed();
-        }
-
-        starved
-    }
-
-    /// Trigger a system reset.
-    fn trigger_reset(&mut self) -> ! {
-        warn!("Triggering watchdog reset");
-        self.hw_watchdog.trigger_reset()
-    }
-
-    /// Get the reason for the last reset.
-    pub fn reset_reason(&self) -> Option<ResetReason> {
-        self.hw_watchdog.reset_reason()
-    }
-}
-
-/// A system clock implementation using core time types, which allows
-/// task-watchdog to work with different clock implementations.
-pub struct CoreClock;
-
-impl Clock for CoreClock {
-    type Instant = u64; // Simple millisecond counter
-    type Duration = core::time::Duration;
-
-    fn now(&self) -> Self::Instant {
-        // In real code, this would use a hardware timer
-        // This is just a simple example
-        static mut MILLIS: u64 = 0;
-        unsafe {
-            MILLIS += 1;
-            MILLIS
-        }
-    }
-
-    fn elapsed_since(&self, instant: Self::Instant) -> Self::Duration {
-        let now = self.now();
-        let elapsed_ms = now.saturating_sub(instant);
-        core::time::Duration::from_millis(elapsed_ms)
-    }
-
-    fn has_elapsed(&self, instant: Self::Instant, duration: &Self::Duration) -> bool {
-        self.elapsed_since(instant) >= *duration
-    }
-
-    fn duration_from_millis(&self, millis: u64) -> Self::Duration {
-        core::time::Duration::from_millis(millis)
-    }
-}
-
-/// A system clock implementation for Embassy.
-pub struct EmbassyClock;
-
-impl Clock for EmbassyClock {
-    type Instant = embassy_time::Instant;
-    type Duration = embassy_time::Duration;
-
-    fn now(&self) -> Self::Instant {
-        embassy_time::Instant::now()
-    }
-
-    fn elapsed_since(&self, instant: Self::Instant) -> Self::Duration {
-        embassy_time::Instant::now() - instant
-    }
-
-    fn has_elapsed(&self, instant: Self::Instant, duration: &Self::Duration) -> bool {
-        (embassy_time::Instant::now() - instant) >= *duration
-    }
-
-    fn duration_from_millis(&self, millis: u64) -> Self::Duration {
-        embassy_time::Duration::from_millis(millis)
-    }
-}
 /// An async implementation of task-watchdog for use with the RP2040 and RP2350
 /// embassy implementations.  There are also stm32 and nRF equivalents of this
 /// module.
@@ -543,225 +298,6 @@ impl Clock for EmbassyClock {
 /// There is an equivalent `embassy_stm32` module for STM32, but due to
 /// docs.rs limitations it is not documented here.  See the above example for
 /// usage of that module.  `embassy_nrf` and `embassy_rsp32` also exist.
-pub mod embassy_rp {
-    use super::{
-        Clock, EmbassyClock, HardwareWatchdog, ResetReason, WatchdogConfig, WatchdogContainer, info,
-    };
-    use embassy_rp::peripherals::WATCHDOG as RpWatchdogPeripheral;
-    use embassy_rp::watchdog as rp_watchdog;
-    use embassy_time::{Instant, Timer};
+pub mod embassy_rp;
 
-    /// RP2040/RP2350-specific watchdog implementation.
-    struct RpWatchdog {
-        inner: rp_watchdog::Watchdog,
-    }
-
-    impl RpWatchdog {
-        /// Create a new RP2040/RP2350 watchdog.
-        #[must_use]
-        pub fn new(peripheral: embassy_rp::Peri<'static, RpWatchdogPeripheral>) -> Self {
-            Self {
-                inner: rp_watchdog::Watchdog::new(peripheral),
-            }
-        }
-    }
-
-    /// Implement the HardwareWatchdog trait for the RP2040/RP2350 watchdog.
-    impl HardwareWatchdog<EmbassyClock> for RpWatchdog {
-        fn start(&mut self, timeout: <EmbassyClock as Clock>::Duration) {
-            self.inner.start(timeout);
-        }
-
-        fn feed(&mut self) {
-            self.inner.feed();
-        }
-
-        fn trigger_reset(&mut self) -> ! {
-            self.inner.trigger_reset();
-            panic!("Triggering reset via watchdog failed");
-        }
-
-        fn reset_reason(&self) -> Option<ResetReason> {
-            self.inner.reset_reason().map(|reason| match reason {
-                embassy_rp::watchdog::ResetReason::Forced => ResetReason::Forced,
-                embassy_rp::watchdog::ResetReason::TimedOut => ResetReason::TimedOut,
-            })
-        }
-    }
-
-    /// An Embassy RP2040/RP2350 watchdog runner.
-    ///
-    /// There is an equivalent version of this when using the `alloc` feature
-    /// which does not include the `const N: usize` type.
-    ///
-    /// There is also an equivalent STM32 watchdog runner in the
-    /// `embassy_stm32` module.
-    ///
-    /// Create the watchdog runner using the [`WatchdogRunner::new()`] method, and then use the
-    /// methods to register tasks and feed the watchdog.  You probably don't
-    /// want to access the other methods directly - use [`watchdog_run()`] to
-    /// handle running the task-watchdog.
-    pub(crate) struct RpWatchdogOwner<const N: usize> {
-        watchdog: embassy_sync::mutex::Mutex<
-            embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex,
-            core::cell::RefCell<WatchdogContainer<N, RpWatchdog, EmbassyClock>>,
-        >,
-    }
-
-    impl<const N: usize> RpWatchdogOwner<N> {
-        /// Create a new Embassy-compatible watchdog runner.
-        pub(crate) fn new(
-            hw_watchdog: embassy_rp::Peri<'static, RpWatchdogPeripheral>,
-            config: WatchdogConfig<EmbassyClock>,
-        ) -> Self {
-            let hw_watchdog = RpWatchdog::new(hw_watchdog);
-            let watchdog = WatchdogContainer::new(hw_watchdog, config, EmbassyClock);
-            Self {
-                watchdog: embassy_sync::mutex::Mutex::new(core::cell::RefCell::new(watchdog)),
-            }
-        }
-
-        /// Register a task with the watchdog.
-        pub(crate) async fn register_task(
-            &self,
-            id: &TaskKey,
-            max_duration: <EmbassyClock as Clock>::Duration,
-        ) {
-            self.watchdog
-                .lock()
-                .await
-                .borrow_mut()
-                .register_task(id, max_duration)
-                .ok();
-        }
-
-        /// Deregister a task with the watchdog.
-        pub(crate) async fn deregister_task(&self, id: &TaskKey) {
-            self.watchdog.lock().await.borrow_mut().deregister_task(id);
-        }
-
-        /// Feed the watchdog for a specific task.
-        pub(crate) async fn feed(&self, id: &TaskKey) {
-            self.watchdog.lock().await.borrow_mut().feed(id);
-        }
-
-        /// Start the watchdog.
-        pub(crate) async fn start(&self) {
-            self.watchdog.lock().await.borrow_mut().start();
-        }
-
-        /// Trigger a system reset.
-        pub(crate) async fn trigger_reset(&self) -> ! {
-            self.watchdog.lock().await.borrow_mut().trigger_reset()
-        }
-
-        /// Get the last reset reason.
-        pub(crate) async fn reset_reason(&self) -> Option<ResetReason> {
-            self.watchdog.lock().await.borrow().reset_reason()
-        }
-
-        /// Get the check interval
-        pub(crate) async fn get_check_interval(&self) -> <EmbassyClock as Clock>::Duration {
-            self.watchdog.lock().await.borrow().config.check_interval
-        }
-
-        /// Check if any tasks have starved
-        pub(crate) async fn check_tasks(&self) -> bool {
-            self.watchdog.lock().await.borrow_mut().check()
-        }
-    }
-
-    /// A version of the Watchdog Task when not using the `alloc`` feature.
-    ///
-    /// There is an equivalent version of this when using the `alloc` feature
-    /// which does not include the `const N: usize` type.
-    pub struct WatchdogTask<const N: usize> {
-        runner: &'static RpWatchdogOwner<N>,
-    }
-
-    impl<const N: usize> RpWatchdogOwner<N> {
-        /// Used to create a watchdog task when not using the alloc feature.
-        ///
-        /// There is an equivalent version of this when using the `alloc` feature
-        /// which does not include the `const N: usize` type.
-        pub(crate) fn create_task(&'static self) -> WatchdogTask<N> {
-            WatchdogTask { runner: self }
-        }
-    }
-
-    /// Watchdog Runner function, which will monitor tasks and reset the
-    /// system if any.
-    ///
-    /// You must call this function from an async task to start and run the
-    /// watchdog.  Using `spawner.must_spawn(watchdog_run(watchdog))` would
-    /// likely be a good choice.
-    pub async fn watchdog_run<const N: usize>(task: WatchdogTask<N>) -> ! {
-        info!("Watchdog runner started");
-
-        // Start the watchdog
-        task.runner.start().await;
-
-        // Get initial check interval
-        let interval = task.runner.get_check_interval().await;
-        let mut check_time = Instant::now() + interval;
-
-        loop {
-            // Check for starved tasks.  We don't do anthing based on the
-            // return code as check_tasks() handles feeding/starving the
-            // hardware watchdog.
-            let _ = task.runner.check_tasks().await;
-
-            // Wait before checking again
-            Timer::at(check_time).await;
-            check_time += interval;
-        }
-    }
-
-    use super::{BoundWatchdog, TaskDesc, TaskKey};
-
-    // existing imports...
-    // use embassy_rp::peripherals::WATCHDOG as RpWatchdogPeripheral;
-
-    /// Auto-ID watchdog runner: fixes I = TaskKey.
-    ///
-    /// N defaults to 32 so the user doesn't have to write it.
-    pub struct RpWatchdogRunner<const N: usize = 32> {
-        inner: RpWatchdogOwner<N>,
-    }
-
-    impl<const N: usize> RpWatchdogRunner<N> {
-        pub fn new(
-            hw_watchdog: embassy_rp::Peri<'static, embassy_rp::peripherals::WATCHDOG>,
-            config: WatchdogConfig<EmbassyClock>,
-        ) -> Self {
-            Self {
-                inner: RpWatchdogOwner::new(hw_watchdog, config),
-            }
-        }
-
-        #[inline(always)]
-        pub async fn register_desc(
-            &'static self,
-            desc: &'static TaskDesc,
-            max_duration: <EmbassyClock as Clock>::Duration,
-        ) -> BoundWatchdog<'static, N> {
-            let id = TaskKey::from_desc(desc);
-            self.inner.register_task(&id, max_duration).await;
-            BoundWatchdog::new(&self.inner, id)
-        }
-
-        // If you want to expose other runner methods, forward them:
-        #[inline(always)]
-        #[must_use]
-        pub fn create_task(&'static self) -> WatchdogTask<N> {
-            // use your existing create_task() on inner
-            // (we need a &'static self; enforce via caller)
-            // SAFETY: self is &'static in signature.
-            let inner: &'static RpWatchdogOwner<N> = unsafe { &*(&self.inner as *const _) };
-            inner.create_task()
-        }
-    }
-
-    // Re-export for macro path convenience
-    pub use RpWatchdogRunner as Watchdog;
-}
+// pub mod embassy_stm32;

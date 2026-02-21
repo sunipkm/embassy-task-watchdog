@@ -102,13 +102,12 @@ pub fn task(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let expanded = quote! {
 
-        // Unique descriptor: address acts as identity (no linker section)
-        static #desc_ident: ::embassy_task_watchdog::TaskDesc = ::embassy_task_watchdog::TaskDesc {
-            name: ::core::stringify!(#fn_ident),
-        };
-
         #[embassy_executor::task]
         #vis #sig {
+            // Unique descriptor: address acts as identity (no linker section)
+            static #desc_ident: ::embassy_task_watchdog::TaskDesc = ::embassy_task_watchdog::TaskDesc {
+                name: ::core::stringify!(#fn_ident),
+            };
             // Convert runner ref into a per-task bound watchdog
             let #wd_ident = #wd_ident.register_desc(&#desc_ident, #max_expr).await;
 

@@ -4,7 +4,7 @@ use defmt_rtt as _;
 use embassy_executor::Spawner;
 use embassy_rp::config::Config;
 use embassy_task_watchdog::WatchdogConfig;
-use embassy_task_watchdog::embassy_rp::{Watchdog, watchdog_run};
+use embassy_task_watchdog::embassy_rp::{Watchdog, WatchdogIface, WatchdogTask, watchdog_run};
 use embassy_time::{Duration, Timer};
 use panic_probe as _;
 use static_cell::StaticCell;
@@ -24,23 +24,23 @@ async fn main(spawner: Spawner) {
     };
     // Create the watchdog runner and store it in the static cell
     let watchdog = Watchdog::new(p.WATCHDOG, config);
-    let watchdog = WATCHDOG.init(watchdog);
+    let (watchdog, watchdogtask) = WATCHDOG.init(watchdog).build();
     // Register our tasks with the task-watchdog.  Each can have a different timeout.
     // Spawn tasks that will feed the watchdog
     spawner.must_spawn(main_task(watchdog));
     spawner.must_spawn(second_task(watchdog));
     // Finally spawn the watchdog - this will start the hardware watchdog, and feed it
     // for as long as _all_ tasks are healthy.
-    spawner.must_spawn(watchdog_task(watchdog));
+    spawner.must_spawn(watchdog_task(watchdogtask));
 }
 // Provide a simple embassy task for the watchdog
 #[embassy_executor::task]
-async fn watchdog_task(watchdog: &'static Watchdog) -> ! {
-    watchdog_run(watchdog.create_task()).await
+async fn watchdog_task(watchdog: WatchdogTask) -> ! {
+    watchdog_run(watchdog).await
 }
 // Implement your main task
 #[embassy_task_watchdog::task(max_duration = Duration::from_millis(1500))]
-async fn main_task(watchdog: &'static Watchdog) -> ! {
+async fn main_task(watchdog: WatchdogIface) -> ! {
     loop {
         // Feed the watchdog
         watchdog.feed().await;
@@ -50,7 +50,7 @@ async fn main_task(watchdog: &'static Watchdog) -> ! {
 }
 // Implement your second task
 #[embassy_task_watchdog::task(max_duration = Duration::from_millis(2000))]
-async fn second_task(watchdog: &'static Watchdog) -> ! {
+async fn second_task(watchdog: WatchdogIface) -> ! {
     loop {
         // Feed the watchdog
         watchdog.feed().await;
