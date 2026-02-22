@@ -4,6 +4,6 @@ version = "0.0.1"
 edition = "2024"
 authors = ["Sunip K. Mukherjee <sunipkmukherjee@gmail.com>"]
 description = "Number of tasks for the [`embassy_task_watchdog`] crate."
-license = "MIT or Apache 2.0"
+license = "MIT OR Apache-2.0"
 
 [dependencies]
