@@ -131,7 +131,7 @@
 //!   use modern Rust features and idioms.
 //! - Automate the task registration process with a procedural macro, to reduce boilerplate and
 //!   make it easier to use.
-//! - Get rid of custom task identifier types through the [`Id`] trait.
+//! - Get rid of custom task identifier types through the `task_watchdog::Id` trait.
 //!
 //! To achieve these goals, the codebase has been refactored and the scope has been limited to
 //! embassy-based async applications, which is the primary use case for this crate.  The API has

@@ -1,4 +1,5 @@
 #[macro_export]
+#[doc(hidden)]
 /// Helper macro to implement the TaskWatchdog and WatchdogRunner for a family of watchdogs.
 macro_rules! impl_watchdog {
     ($Family: ident) => {
@@ -116,10 +117,10 @@ macro_rules! impl_watchdog {
             }
 
             #[derive(Clone, Copy)]
-            /// A per-task bound handle that lets the task call [`feed`] without IDs.
+            /// A per-task bound handle that lets the task call `feed()` without IDs.
             ///
             /// Pass a static reference to this struct to the task, decorated by
-            /// [`embassy_task_watchdog::task`] as the first argument.
+            /// [`crate::task`] as the first argument.
             pub struct [<$Family TaskWatchdog>]<const N: usize = MAX_TASKS> {
                 inner: &'static WatchdogOwner<N, [<$Family Watchdog>]>,
             }

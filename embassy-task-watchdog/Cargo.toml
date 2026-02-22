@@ -8,13 +8,11 @@ documentation = "https://docs.rs/embassy-task-watchdog"
 repository = "https://github.com/sunipkm/embassy-task-watchdog"
 license = "MIT OR Apache-2.0"
 keywords = [
-  "embedded",
   "watchdog",
   "embassy",
+  "no_std",
   "rp",
   "stm32",
-  "pi pico",
-  "no_std",
 ]
 categories = ["embedded", "no-std", "asynchronous", "hardware-support"]
 readme = "README.md"
@@ -102,15 +100,11 @@ test = false
 [package.metadata.docs.rs]
 # Due to limitations in docs.rs, we need to specify features/targets.  This
 # means that full documentation for all features won't be provided.
-features = ["rp", "stm32", "defmt-embassy-rp", "defmt-embassy-stm32"]
-targets = [
-  "thumbv6m-none-eabi",
-  "thumbv7m-none-eabi",
-  "thumbv8m.main-none-eabihf",
+features = [
+  "dev-rp235xa",
+  "dev-stm32c031c6",
+  "defmt-embassy-rp",
+  "defmt-embassy-stm32",
+  "defmt",
 ]
-
-[profile.dev]
-opt-level = "s"
-
-[profile.release]
-debug = 2
+targets = ["thumbv8m.main-none-eabihf"]
