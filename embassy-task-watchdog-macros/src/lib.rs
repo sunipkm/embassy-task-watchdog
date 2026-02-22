@@ -88,7 +88,7 @@ fn first_param_ident(fn_item: &ItemFn) -> Result<Ident> {
 ///     }
 /// }
 /// ```
-/// The first argument to the task must be a static reference to the [`embassy_task_watchdog::TaskWatchdog`] for the task to register itself with.  The macro will convert this into a per-task bound watchdog that the user can feed to indicate the task is still alive.  The `timeout` argument specifies how long the watchdog should wait for a feed before considering the task to be stalled.  This is required to be able to detect stalls, and should be set to a value that is longer than the longest expected time between feeds in the task.
+/// The first argument to the task must be a static reference to the [`embassy_task_watchdog::TaskWatchdog`] for the task to register itself with. The macro will convert this into a per-task bound watchdog that the user can feed to indicate the task is still alive. The `timeout` argument specifies how long the watchdog should wait for a feed before considering the task to be stalled. This is required to be able to detect stalls, and should be set to a value that is longer than the longest expected time between feeds in the task.
 pub fn task(attr: TokenStream, item: TokenStream) -> TokenStream {
     let args = parse_macro_input!(attr as TaskArgs);
     let f = parse_macro_input!(item as ItemFn);
