@@ -58,7 +58,7 @@ The library supports the embassy-executor asynchronous API.
 - **Feeding**: Tasks must feed, or pet, the watchdog within their timeout period to prevent a reset.
 - **Task Multiplexing**: The library efficiently manages multiple task timeouts through a single hardware watchdog, triggering if any individual task fails to check in.
 
-![Task Watchdog Multiplexing](https://raw.githubusercontent.com/piersfinlayson/task-watchdog/refs/heads/main/docs/images/multiplex.svg)
+![Task Watchdog Multiplexing](https://raw.githubusercontent.com/sunipkm/embassy-task-watchdog/refs/heads/master/docs/images/multiplex.svg)
 
 ### ⚡Asynchronous API using Embassy
 

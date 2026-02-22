@@ -1,2 +1,2 @@
 #!/bin/bash
-cargo publish --features rp2040-embassy,defmt-embassy-rp --target thumbv6m-none-eabi $1 $2
+cargo publish --features dev-rp235xa,defmt-embassy-rp --target thumbv8m.main-none-eabi $1 $2
