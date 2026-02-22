@@ -1,19 +1,19 @@
-# 🐼🐻 embassy-task-watchdog 🛡️
+# `embassy-task-watchdog`
 
 A robust, flexible watchdog management library for embedded systems that multiplexes multiple task watchdogs into a single hardware watchdog timer, preventing system lockups when tasks fail to respond.
 
-## ✨ Key Features
+## Key Features
 
-- **🔄 Hardware Agnostic API**: Implements a consistent, asynchronous interface across different embedded microcontrollers by leveraging [`embassy`](https://embassy.dev).
-- **🔀 Task Multiplexing**: Consolidates multiple independent task watchdogs into a single hardware watchdog, triggering if any task fails to check in.
-- **🔌 Compile-time Task Management**: The [`embassy_task_watchdog::task`](https://docs.rs/embassy_task_watchdog_macros/0.0.1/embassy_task_watchdog_macros/fn.task.html) macro replaces [`embassy_executor::task`](https://docs.embassy.dev/embassy-executor/git/cortex-m/attr.task.html), and automatically registers the task with the Watchdog.
-- **📦 No-alloc Mode**: Functions in `no_alloc` mode for environments without heap availability.
-- **⏱️ Configurable Timeouts**: Individual timeout durations for each registered task.
-- **🧪 `no_std` Compatible**: Designed for resource-constrained embedded environments without an operating system.
-- **🦀 Compile-time Total Tasks Check**: By default, the library supports 32 watchdog tasks. The limit can be changed
+- **Hardware Agnostic API**: Implements a consistent, asynchronous interface across different embedded microcontrollers by leveraging [`embassy`](https://embassy.dev).
+- **Task Multiplexing**: Consolidates multiple independent task watchdogs into a single hardware watchdog, triggering if any task fails to check in.
+- **Compile-time Task Management**: The [`embassy_task_watchdog::task`](https://docs.rs/embassy_task_watchdog_macros/0.0.1/embassy_task_watchdog_macros/fn.task.html) macro replaces [`embassy_executor::task`](https://docs.embassy.dev/embassy-executor/git/cortex-m/attr.task.html), and automatically registers the task with the Watchdog.
+- **No-alloc Mode**: Functions in `no_alloc` mode for environments without heap availability.
+- **Configurable Timeouts**: Individual timeout durations for each registered task.
+- **`no_std` Compatible**: Designed for resource-constrained embedded environments without an operating system.
+- **Compile-time Total Tasks Check**: By default, the library supports 32 watchdog tasks. The limit can be changed
   by setting the `EMBASSY_TASK_WATCHDOG_MAX_TASKS` variable either in your [`.cargo/config.toml`](examples/task-pico2/.cargo/config.toml), or by passing it as an environment variable to cargo, e.g. `EMBASSY_TASK_WATCHDOG_MAX_TASKS=8 cargo build`.
 
-## 🚀 Quick Start
+## Quick Start
 
 Examples are provided for Raspberry Pi series of microcontrollers, as well as the STM32 microcontrollers using [`embassy`](https://embassy.dev). The examples support the Pico, Pico 2 and STM32F103C8 (blue pill).
 
@@ -48,7 +48,7 @@ To understand how to use `embassy-task-watchdog` yourself, check out one of the 
 - [`task-pico2`](examples/task-pico2/src/main.rs) - A very basic Pi Pico 2 async example
 - [`task-stm32`](examples/task-stm32/src/main.rs) - A very basic Blue Pill async example
 
-## 📝 Usage
+## Usage
 
 The library supports the embassy-executor asynchronous API.
 
@@ -58,14 +58,14 @@ To use in your project, add the following line to your `Cargo.toml` file:
 embassy-task-watchdog = { version = "0.0.1", features = ["rp"] } # additionally, supports defmt for logging, stm32 for STM32 devices...
 ```
 
-### 🛠️ Features
+### Features
 - `rp`: For Raspberry Pi Pico (RP2040) / Pico 2 (RP235xA) or RP235xB based devices. Set up for the correct chip in your `Cargo.toml` by selecting the correct feature in the `embassy-rp` dependency.
   - `defmt-embassy-rp`: [`defmt`](https://docs.rs/defmt/latest/defmt/) debugging for the Embassy executors.
 - `stm32`: For STM32 series of devices. Set up for the correct chip in your `Cargo.toml` by selecting the correct feature in the `embassy-stm32` dependency.
   - `defmt-embassy-stm32`: `defmt` debugging for Embassy executors.
 - `defmt`: Debugging for the `embassy-task-watchdog` crate.
 
-### 🧠 Core Concepts
+### Core Concepts
 
 - **Task Registration**: Each monitored task is registered with its own timeout period. The registration is automatic.
 - **Feeding**: Tasks must feed, or pet, the watchdog within their timeout period to prevent a reset.
@@ -73,7 +73,7 @@ embassy-task-watchdog = { version = "0.0.1", features = ["rp"] } # additionally,
 
 ![Task Watchdog Multiplexing](https://raw.githubusercontent.com/sunipkm/embassy-task-watchdog/refs/heads/master/docs/images/multiplex.svg)
 
-### ⚡Asynchronous API using Embassy
+### Asynchronous API using Embassy
 
 Tasks feed the watchdog asynchronously, powered by Embassy:
 
@@ -97,7 +97,7 @@ async fn main_task(watchdog: TaskWatchdog) -> ! {
 // Implement other tasks
 ```
 
-## 🏗️ Platform Support
+## Platform Support
 
 The crate includes first-class support for:
 
@@ -105,14 +105,14 @@ The crate includes first-class support for:
 - STM32 family via the `stm32` feature.
 - `defmt` for `defmt` based logging.
 
-## 📜 License
+## License
 
 Licensed under either of the following, at your option:
 
 - Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
 - MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
 
-## 🔥 Inspiration
+## Inspiration
 
 This work is inspired heavily by the [`task-watchdog`](https://github.com/piersfinlayson/task-watchdog)
 crate by Piers Finlayson, which provides
