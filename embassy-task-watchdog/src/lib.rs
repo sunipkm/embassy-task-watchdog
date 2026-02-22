@@ -146,6 +146,7 @@
 #![warn(missing_docs)]
 
 mod runtime;
+use embassy_time::Duration;
 #[doc(hidden)]
 pub use runtime::TaskDesc;
 
@@ -191,7 +192,7 @@ pub(crate) use embassy_task_watchdog_numtasks::MAX_TASKS;
 /// Represents a hardware-level watchdog that can be fed and reset the system.
 pub trait HardwareWatchdog {
     /// Start the hardware watchdog with the given timeout.
-    fn start(&mut self, timeout: embassy_time::Duration);
+    fn start(&mut self, timeout: Duration);
 
     /// Feed the hardware watchdog to prevent a system reset.
     fn feed(&mut self);
@@ -218,21 +219,18 @@ pub enum ResetReason {
 #[derive(Debug, Clone, Copy)]
 pub struct WatchdogConfig {
     /// Timeout to start the hardware watchdog with.
-    pub hardware_timeout: embassy_time::Duration,
+    pub hardware_timeout: Duration,
 
     /// Interval at which to check if tasks have fed the watchdog.  Must be
     /// less than the hardware timeout, or the hardware watchdog will reset
     /// the system, before the task-watchdog has a chance to check tasks and
     /// feed it.
-    pub check_interval: embassy_time::Duration,
+    pub check_interval: Duration,
 }
 
 impl WatchdogConfig {
     /// Create a new configuration with specified timeout values
-    pub fn new(
-        hardware_timeout: embassy_time::Duration,
-        check_interval: embassy_time::Duration,
-    ) -> Self {
+    pub fn new(hardware_timeout: Duration, check_interval: Duration) -> Self {
         Self {
             hardware_timeout,
             check_interval,
@@ -243,10 +241,7 @@ impl WatchdogConfig {
     /// - Hardware timeout: 5000ms
     /// - Check interval: 1000ms
     fn default() -> Self {
-        Self::new(
-            embassy_time::Duration::from_millis(5000),
-            embassy_time::Duration::from_millis(1000),
-        )
+        Self::new(Duration::from_millis(5000), Duration::from_millis(1000))
     }
 }
 

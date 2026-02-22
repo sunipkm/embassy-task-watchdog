@@ -1,7 +1,6 @@
 use super::{HardwareWatchdog, ResetReason, WatchdogConfig, info};
-use embassy_stm32::wdg::IndependentWatchdog;
-use embassy_stm32::{Peri, peripherals::IWDG};
-use embassy_time::{Instant, Timer};
+use embassy_stm32::{Peri, peripherals::IWDG, wdg::IndependentWatchdog};
+use embassy_time::{Duration, Instant, Timer};
 
 pub(crate) struct Stm32Watchdog {
     inner: IndependentWatchdog<'static, IWDG>,
@@ -18,7 +17,7 @@ impl Stm32Watchdog {
 }
 
 impl HardwareWatchdog for Stm32Watchdog {
-    fn start(&mut self, timeout: embassy_time::Duration) {
+    fn start(&mut self, timeout: Duration) {
         let timeout = timeout.as_micros();
         if timeout > u32::MAX as u64 {
             panic!("Watchdog timeout too large for STM32");

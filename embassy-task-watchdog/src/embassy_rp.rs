@@ -1,7 +1,8 @@
 use super::{HardwareWatchdog, ResetReason, WatchdogConfig, info};
-use embassy_rp::watchdog::Watchdog as RpWatchdogDevice;
-use embassy_rp::{Peri, peripherals::WATCHDOG as RpWatchdogPeripheral};
-use embassy_time::{Instant, Timer};
+use embassy_rp::{
+    Peri, peripherals::WATCHDOG as RpWatchdogPeripheral, watchdog::Watchdog as RpWatchdogDevice,
+};
+use embassy_time::{Duration, Instant, Timer};
 
 /// RP2040/RP2350-specific watchdog implementation.
 pub(crate) struct RpWatchdog {
@@ -20,7 +21,7 @@ impl RpWatchdog {
 
 /// Implement the HardwareWatchdog trait for the RP2040/RP2350 watchdog.
 impl HardwareWatchdog for RpWatchdog {
-    fn start(&mut self, timeout: embassy_time::Duration) {
+    fn start(&mut self, timeout: Duration) {
         self.inner.start(timeout);
     }
 
@@ -45,10 +46,7 @@ crate::impl_watchdog!(Rp);
 
 impl<const N: usize> RpWatchdogSetup<N> {
     /// Create a new RP2040/RP2350 watchdog setup.
-    pub fn new(
-        hw_watchdog: Peri<'static, RpWatchdogPeripheral>,
-        config: WatchdogConfig,
-    ) -> Self {
+    pub fn new(hw_watchdog: Peri<'static, RpWatchdogPeripheral>, config: WatchdogConfig) -> Self {
         let hw_watchdog = RpWatchdog::new(hw_watchdog);
         Self {
             inner: WatchdogOwner::new(hw_watchdog, config),

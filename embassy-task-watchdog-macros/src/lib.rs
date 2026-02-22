@@ -1,3 +1,5 @@
+use core::sync::atomic::{AtomicU32, Ordering};
+
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
 use syn::{
@@ -13,7 +15,7 @@ struct TaskArgs {
 }
 
 use embassy_task_watchdog_numtasks::MAX_TASKS;
-static TASK_ID: core::sync::atomic::AtomicU32 = core::sync::atomic::AtomicU32::new(0);
+static TASK_ID: AtomicU32 = AtomicU32::new(0);
 
 impl Parse for TaskArgs {
     fn parse(input: ParseStream) -> Result<Self> {
@@ -105,7 +107,7 @@ pub fn task(attr: TokenStream, item: TokenStream) -> TokenStream {
         Err(e) => return e.to_compile_error().into(),
     };
 
-    let desc_id = TASK_ID.fetch_add(1, core::sync::atomic::Ordering::SeqCst);
+    let desc_id = TASK_ID.fetch_add(1, Ordering::SeqCst);
     if desc_id >= MAX_TASKS as _ {
         return syn::Error::new(
             f.sig.span(),

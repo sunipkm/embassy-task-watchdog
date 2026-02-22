@@ -3,12 +3,17 @@ use std::fmt::Write;
 use std::path::PathBuf;
 use std::{env, fs};
 
-static CONFIGS: &[(&str, usize)] = &[("MAX_TASKS", 32)];
+static CONFIGS: &[(&str, usize, &str)] = &[(
+    "MAX_TASKS",
+    32,
+    "The maximum number of tasks that can be tracked by the [`embassy-task-watchdog`] crate.",
+)];
 
 struct ConfigState {
     value: usize,
     seen_feature: bool,
     seen_env: bool,
+    comments: &'static str,
 }
 
 fn main() {
@@ -21,18 +26,19 @@ fn main() {
     println!("cargo:rerun-if-changed=build.rs");
 
     // Rebuild if config envvar changed.
-    for (name, _) in CONFIGS {
+    for (name, _, _) in CONFIGS {
         println!("cargo:rerun-if-env-changed={crate_name}_{name}");
     }
 
     let mut configs = HashMap::new();
-    for (name, default) in CONFIGS {
+    for (name, default, comments) in CONFIGS {
         configs.insert(
             *name,
             ConfigState {
                 value: *default,
                 seen_env: false,
                 seen_feature: false,
+                comments,
             },
         );
     }
@@ -80,6 +86,7 @@ fn main() {
     let mut data = String::new();
 
     for (name, cfg) in &configs {
+        writeln!(&mut data, "/// {}", cfg.comments).unwrap();
         writeln!(&mut data, "pub const {}: usize = {};", name, cfg.value).unwrap();
     }
 
