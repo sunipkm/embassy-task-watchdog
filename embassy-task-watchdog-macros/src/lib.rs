@@ -9,37 +9,40 @@ use syn::{
 };
 
 struct TaskArgs {
-    max_duration: Expr, // must evaluate to embassy_time::Duration
+    timeout: Expr,
 }
+
+use embassy_task_watchdog_numtasks::MAX_TASKS;
+static TASK_ID: core::sync::atomic::AtomicU32 = core::sync::atomic::AtomicU32::new(0);
 
 impl Parse for TaskArgs {
     fn parse(input: ParseStream) -> Result<Self> {
-        let mut max_duration: Option<Expr> = None;
+        let mut timeout: Option<Expr> = None;
         let args: Punctuated<MetaNameValue, Token![,]> =
             input.parse_terminated(MetaNameValue::parse, Token![,])?;
 
         for nv in args {
             let key = nv.path.get_ident().map(|i| i.to_string());
             match key.as_deref() {
-                Some("max_duration") => max_duration = Some(nv.value),
+                Some("timeout") => timeout = Some(nv.value),
                 Some(other) => {
                     return Err(syn::Error::new(
                         nv.path.span(),
-                        format!("unknown argument `{other}` (supported: max_duration)"),
+                        format!("unknown argument `{other}` (supported: timeout)"),
                     ));
                 }
                 None => {
                     return Err(syn::Error::new(
                         nv.path.span(),
-                        "expected identifier key (supported: max_duration)",
+                        "expected identifier key (supported: timeout)",
                     ));
                 }
             }
         }
 
         Ok(Self {
-            max_duration: max_duration.ok_or_else(|| {
-                syn::Error::new(input.span(), "missing required: max_duration = <expr>")
+            timeout: timeout.ok_or_else(|| {
+                syn::Error::new(input.span(), "missing required: timeout = <expr>")
             })?,
         })
     }
@@ -74,7 +77,7 @@ fn first_param_ident(fn_item: &ItemFn) -> Result<Ident> {
 /// # #![no_std]
 /// # #![no_main]
 /// # use embassy_time::{Duration, Timer};
-/// #[task(max_duration = Duration::from_millis(2000))]
+/// #[task(timeout = Duration::from_millis(2000))]
 /// async fn my_task(watchdog: TaskWatchdog) {
 ///     loop {
 ///       watchdog.feed().await; // Feed the watchdog to indicate the task is still alive
@@ -83,7 +86,7 @@ fn first_param_ident(fn_item: &ItemFn) -> Result<Ident> {
 ///     }
 /// }
 /// ```
-/// The first argument to the task must be a static reference to the [`embassy_task_watchdog::TaskWatchdog`] for the task to register itself with.  The macro will convert this into a per-task bound watchdog that the user can feed to indicate the task is still alive.  The `max_duration` argument specifies how long the watchdog should wait for a feed before considering the task to be stalled.  This is required to be able to detect stalls, and should be set to a value that is longer than the longest expected time between feeds in the task.
+/// The first argument to the task must be a static reference to the [`embassy_task_watchdog::TaskWatchdog`] for the task to register itself with.  The macro will convert this into a per-task bound watchdog that the user can feed to indicate the task is still alive.  The `timeout` argument specifies how long the watchdog should wait for a feed before considering the task to be stalled.  This is required to be able to detect stalls, and should be set to a value that is longer than the longest expected time between feeds in the task.
 pub fn task(attr: TokenStream, item: TokenStream) -> TokenStream {
     let args = parse_macro_input!(attr as TaskArgs);
     let f = parse_macro_input!(item as ItemFn);
@@ -102,6 +105,18 @@ pub fn task(attr: TokenStream, item: TokenStream) -> TokenStream {
         Err(e) => return e.to_compile_error().into(),
     };
 
+    let desc_id = TASK_ID.fetch_add(1, core::sync::atomic::Ordering::SeqCst);
+    if desc_id >= MAX_TASKS as _ {
+        return syn::Error::new(
+            f.sig.span(),
+            format!(
+                "task limit exceeded ({desc_id}): max is {MAX_TASKS} (consider increasing the limit in embassy-task-watchdog-numtasks)"
+            ),
+        )
+        .to_compile_error()
+        .into();
+    }
+
     let vis = &f.vis;
     let sig = &f.sig;
     let fn_ident = &f.sig.ident;
@@ -111,9 +126,8 @@ pub fn task(attr: TokenStream, item: TokenStream) -> TokenStream {
         "__EMBASSY_TASK_WATCHDOG_DESC_{}",
         fn_ident.to_string().to_uppercase()
     );
-    // let maxfn_ident = format_ident!("__embassy_task_watchdog_max_{}", fn_ident);
 
-    let max_expr = args.max_duration;
+    let max_expr = args.timeout;
 
     let expanded = quote! {
 
@@ -122,12 +136,16 @@ pub fn task(attr: TokenStream, item: TokenStream) -> TokenStream {
             // Unique descriptor: address acts as identity (no linker section)
             static #desc_ident: ::embassy_task_watchdog::TaskDesc = ::embassy_task_watchdog::TaskDesc {
                 name: ::core::stringify!(#fn_ident),
+                id: #desc_id,
             };
             // Convert runner ref into a per-task bound watchdog
             let #wd_ident = #wd_ident.register_desc(&#desc_ident, #max_expr).await;
-
-            // User body now sees #wd_ident: BoundWatchdog
-            #block
+            {
+                // User body now sees #wd_ident: BoundWatchdog
+                #block
+            }
+            #[allow(unreachable_code)]
+            #wd_ident.deregister().await;
         }
     };
 

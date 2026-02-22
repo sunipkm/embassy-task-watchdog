@@ -7,7 +7,15 @@ description = "A robust, flexible watchdog management library for embedded syste
 documentation = "https://docs.rs/embassy-task-watchdog"
 repository = "https://github.com/sunipkm/embassy-task-watchdog"
 license = "MIT OR Apache-2.0"
-keywords = ["embedded", "watchdog", "embassy", "rp", "stm32", "pi pico", "no_std"]
+keywords = [
+  "embedded",
+  "watchdog",
+  "embassy",
+  "rp",
+  "stm32",
+  "pi pico",
+  "no_std",
+]
 categories = ["embedded", "no-std", "asynchronous", "hardware-support"]
 readme = "README.md"
 
@@ -80,8 +88,10 @@ portable-atomic = { version = "1.10", default-features = false }
 cortex-m = { version = "0.7", features = ["inline-asm"] }
 cortex-m-rt = { version = "0.7" }
 critical-section = { version = "1.2" }
+embassy-task-watchdog-numtasks = { version = "0.0.1", path = "../embassy-task-watchdog-numtasks" }
 embassy-task-watchdog-macros = { version = "0.0.1", path = "../embassy-task-watchdog-macros" }
 panic-probe = { version = "1.0", optional = true }
+static_cell = "2.1"
 paste = { version = "1.0" }
 
 [lib]
@@ -93,7 +103,11 @@ test = false
 # Due to limitations in docs.rs, we need to specify features/targets.  This
 # means that full documentation for all features won't be provided.
 features = ["rp", "stm32", "defmt-embassy-rp", "defmt-embassy-stm32"]
-targets = ["thumbv6m-none-eabi", "thumbv7m-none-eabi", "thumbv8m.main-none-eabihf"]
+targets = [
+  "thumbv6m-none-eabi",
+  "thumbv7m-none-eabi",
+  "thumbv8m.main-none-eabihf",
+]
 
 [profile.dev]
 opt-level = "s"

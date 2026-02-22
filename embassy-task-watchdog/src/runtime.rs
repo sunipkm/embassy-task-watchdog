@@ -1,54 +1,26 @@
-use crate::{Error, HardwareWatchdog, ResetReason, WatchdogConfig, debug, error, info, warn};
+use core::cell::RefCell;
 
-/// Descriptor emitted by the proc-macro (NOT in a linker section).
+use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
+
+use crate::{
+    Error, HardwareWatchdog, MAX_TASKS, ResetReason, WatchdogConfig, debug, error, info, warn,
+};
+
+/// Descriptor emitted by the proc-macro.
 #[repr(C)]
 #[doc(hidden)]
 pub struct TaskDesc {
+    pub id: u32,
     pub name: &'static str,
-}
-
-/// Auto-generated ID type used internally by the auto-watchdog path.
-///
-/// We derive it from the address of a unique `static TaskDesc`.
-/// It's Copy + Eq + Debug (and defmt::Format when enabled).
-#[derive(Clone, Copy, PartialEq, Eq)]
-#[cfg_attr(feature = "defmt", derive(defmt::Format))]
-#[doc(hidden)]
-pub struct TaskKey(u32);
-
-impl core::fmt::Debug for TaskKey {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        // Show as hex; stable and useful
-        write!(f, "TaskKey(0x{:08x})", self.0)
-    }
-}
-
-impl TaskKey {
-    /// Derive a stable-ish key for this boot from a descriptor's address.
-    ///
-    /// We hash the pointer down to u32 to keep the ID small.
-    /// Collisions are extremely unlikely with a small number of tasks.
-    #[inline(always)]
-    #[doc(hidden)]
-    pub fn from_desc(desc: &'static TaskDesc) -> Self {
-        let addr = (desc as *const TaskDesc as usize) as u64;
-
-        // A tiny fixed hash (no alloc, no std). Use splitmix64 then truncate.
-        let mut x = addr.wrapping_add(0x9E3779B97F4A7C15);
-        x = (x ^ (x >> 30)).wrapping_mul(0xBF58476D1CE4E5B9);
-        x = (x ^ (x >> 27)).wrapping_mul(0x94D049BB133111EB);
-        x ^= x >> 31;
-
-        TaskKey((x as u32) ^ ((x >> 32) as u32))
-    }
 }
 
 /// Represents a task monitored by the watchdog.
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub(crate) struct Task {
-    /// The task identifier.
+    /// The task name (for logging).
     #[allow(dead_code)]
-    id: TaskKey,
+    name: &'static str,
 
     /// The last time the task was fed.
     last_feed: embassy_time::Instant,
@@ -59,10 +31,10 @@ pub(crate) struct Task {
 
 impl Task {
     /// Creates a new Task object for registration with the watchdog.
-    pub fn new(id: TaskKey, max_duration: embassy_time::Duration) -> Self {
+    pub fn new(name: &'static str, max_duration: embassy_time::Duration) -> Self {
         Self {
-            id,
-            last_feed: embassy_time::Instant::now(),
+            name,
+            last_feed: embassy_time::Instant::now(), // Initialize to the epoch; will be fed immediately on watchdog start.
             max_duration,
         }
     }
@@ -123,48 +95,40 @@ impl<W: HardwareWatchdog, const N: usize> WatchdogContainer<N, W> {
     /// returned.
     pub(crate) fn register_task(
         &mut self,
-        id: &TaskKey,
+        id: u32,
+        name: &'static str,
         max_duration: embassy_time::Duration,
     ) -> Result<(), Error> {
         // Find an empty slot
-        for slot in &mut self.tasks {
-            if slot.is_none() {
-                *slot = Some(Task::new(*id, max_duration));
-                debug!("Registered task: {:?}", id);
-                return Ok(());
-            }
+        if id >= MAX_TASKS as u32 {
+            return Err(Error::NoSlotsAvailable);
         }
-
-        // No empty slots available
-        error!("Failed to register task: {:?} - no slots available", id);
-        Err(Error::NoSlotsAvailable)
+        // SAFETY: We have already checked that the ID is within bounds, so this is safe.
+        let slot = unsafe { self.tasks.get_unchecked_mut(id as usize) };
+        *slot = Some(Task::new(name, max_duration));
+        debug!("Registered task: {} ({})", id, name);
+        Ok(())
     }
 
-    pub(crate) fn deregister_task(&mut self, id: &TaskKey) {
-        for slot in &mut self.tasks {
-            if let Some(task) = slot
-                && task.id == *id
-            {
-                *slot = None;
-                debug!("Deregistered task: {:?}", id);
-                return;
-            }
+    pub(crate) fn deregister_task(&mut self, id: u32) {
+        #[allow(unused)]
+        if let Some(task) = self.tasks.get_mut(id as usize).and_then(|slot| slot.take()) {
+            debug!("Deregistering task: {} ({})", id, task.name);
+        } else {
+            warn!("Attempted to deregister unknown task: {:?}", id);
         }
-        info!("Attempted to deregister unknown task: {:?}", id);
     }
 
-    pub(crate) fn feed(&mut self, id: &TaskKey) {
-        let fed = self.tasks.iter_mut().flatten().any(|task| {
-            if task.id == *id {
-                task.feed();
-                true
-            } else {
-                false
-            }
-        });
-
-        if !fed {
-            warn!("Attempt to feed unknown task: {:?}", id);
+    pub(crate) fn feed(&mut self, id: u32) {
+        if let Some(task) = self
+            .tasks
+            .get_mut(id as usize)
+            .and_then(|slot| slot.as_mut())
+        {
+            debug!("Feeding task: {} ({})", id, task.name);
+            task.feed();
+        } else {
+            warn!("Attempted to feed unknown task: {:?}", id);
         }
     }
 
@@ -190,7 +154,7 @@ impl<W: HardwareWatchdog, const N: usize> WatchdogContainer<N, W> {
         let mut starved = false;
         self.tasks.iter_mut().flatten().for_each(|task| {
             if task.is_starved() {
-                error!("Task {:?} has starved the watchdog", task.id);
+                error!("Task {} has starved the watchdog", task.name);
                 starved = true;
             }
         });
@@ -217,10 +181,7 @@ impl<W: HardwareWatchdog, const N: usize> WatchdogContainer<N, W> {
 }
 
 pub(crate) struct WatchdogOwner<const N: usize, W: HardwareWatchdog> {
-    watchdog: embassy_sync::mutex::Mutex<
-        embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex,
-        core::cell::RefCell<WatchdogContainer<N, W>>,
-    >,
+    watchdog: Mutex<CriticalSectionRawMutex, RefCell<WatchdogContainer<N, W>>>,
 }
 
 impl<const N: usize, W: HardwareWatchdog> WatchdogOwner<N, W> {
@@ -228,27 +189,32 @@ impl<const N: usize, W: HardwareWatchdog> WatchdogOwner<N, W> {
     pub(crate) fn new(hw_watchdog: W, config: WatchdogConfig) -> Self {
         let watchdog = WatchdogContainer::new(hw_watchdog, config);
         Self {
-            watchdog: embassy_sync::mutex::Mutex::new(core::cell::RefCell::new(watchdog)),
+            watchdog: Mutex::new(RefCell::new(watchdog)),
         }
     }
 
     /// Register a task with the watchdog.
-    pub(crate) async fn register_task(&self, id: &TaskKey, max_duration: embassy_time::Duration) {
+    pub(crate) async fn register_task(
+        &self,
+        id: u32,
+        name: &'static str,
+        max_duration: embassy_time::Duration,
+    ) {
         self.watchdog
             .lock()
             .await
             .borrow_mut()
-            .register_task(id, max_duration)
+            .register_task(id, name, max_duration)
             .ok();
     }
 
     /// Deregister a task with the watchdog.
-    pub(crate) async fn deregister_task(&self, id: &TaskKey) {
+    pub(crate) async fn deregister_task(&self, id: u32) {
         self.watchdog.lock().await.borrow_mut().deregister_task(id);
     }
 
     /// Feed the watchdog for a specific task.
-    pub(crate) async fn feed(&self, id: &TaskKey) {
+    pub(crate) async fn feed(&self, id: u32) {
         self.watchdog.lock().await.borrow_mut().feed(id);
     }
 

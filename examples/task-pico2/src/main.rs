@@ -39,7 +39,7 @@ async fn watchdog_task(watchdog: RpWatchdogRunner) -> ! {
     watchdog_run(watchdog).await
 }
 // Implement your main task
-#[embassy_task_watchdog::task(max_duration = Duration::from_millis(1500))]
+#[embassy_task_watchdog::task(timeout = Duration::from_millis(1500))]
 async fn main_task(watchdog: TaskWatchdog) -> ! {
     loop {
         // Feed the watchdog
@@ -49,7 +49,7 @@ async fn main_task(watchdog: TaskWatchdog) -> ! {
     }
 }
 // Implement your second task
-#[embassy_task_watchdog::task(max_duration = Duration::from_millis(2000))]
+#[embassy_task_watchdog::task(timeout = Duration::from_millis(2000))]
 async fn second_task(watchdog: TaskWatchdog) -> ! {
     loop {
         // Feed the watchdog
@@ -58,3 +58,19 @@ async fn second_task(watchdog: TaskWatchdog) -> ! {
         Timer::after(Duration::from_millis(2000)).await;
     }
 }
+
+// If you enable this task, the compiler will complain that max tasks have been exceeded.
+// To increase the limit, change the `EMBASSY_TASK_WATCHDOG_MAX_TASKS` constant in `.cargo/config.toml`
+// or pass it as an environment variable when building, e.g. `EMBASSY_TASK_WATCHDOG_MAX_TASKS=3 cargo build`.
+// The maximum number of tasks is set to 32 by default, but you can reduce it to save memory if you know
+// you won't need that many - or increase it if you need more.
+
+// #[embassy_task_watchdog::task(timeout = Duration::from_millis(2000))]
+// async fn third_task(watchdog: TaskWatchdog) -> ! {
+//     loop {
+//         // Feed the watchdog
+//         watchdog.feed().await;
+//         // Do some work
+//         Timer::after(Duration::from_millis(2000)).await;
+//     }
+// }

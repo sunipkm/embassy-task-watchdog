@@ -10,7 +10,7 @@ pub(crate) struct Stm32Watchdog {
 impl Stm32Watchdog {
     /// Create a new STM32 watchdog.
     #[must_use]
-    pub(crate) fn new(peripheral: embassy_stm32::Peri<'static, IWDG>, timeout_us: u32) -> Self {
+    pub(crate) fn new(peripheral: Peri<'static, IWDG>, timeout_us: u32) -> Self {
         Self {
             inner: IndependentWatchdog::new(peripheral, timeout_us), // Default timeout of 1 second
         }

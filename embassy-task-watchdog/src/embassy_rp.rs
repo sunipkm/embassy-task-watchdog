@@ -45,7 +45,10 @@ crate::impl_watchdog!(Rp);
 
 impl<const N: usize> RpWatchdogSetup<N> {
     /// Create a new RP2040/RP2350 watchdog setup.
-    pub fn new(hw_watchdog: Peri<'static, RpWatchdogPeripheral>, config: WatchdogConfig) -> Self {
+    pub fn new(
+        hw_watchdog: Peri<'static, RpWatchdogPeripheral>,
+        config: WatchdogConfig,
+    ) -> Self {
         let hw_watchdog = RpWatchdog::new(hw_watchdog);
         Self {
             inner: WatchdogOwner::new(hw_watchdog, config),

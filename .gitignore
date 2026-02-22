@@ -3,4 +3,5 @@ Cargo.lock
 .DS_Store
 *.zip
 *.log
+*.txt
 expanded.rs

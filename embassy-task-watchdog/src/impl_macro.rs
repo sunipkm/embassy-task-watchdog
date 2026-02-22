@@ -1,4 +1,3 @@
-
 #[macro_export]
 /// Helper macro to implement the TaskWatchdog and WatchdogRunner for a family of watchdogs.
 macro_rules! impl_watchdog {
@@ -49,7 +48,7 @@ macro_rules! impl_watchdog {
                 }
             }
 
-            use super::{TaskDesc, TaskKey};
+            use super::TaskDesc;
 
             /// A per-task bound handle that lets the task call `feed()` without IDs.
             #[doc(hidden)]
@@ -58,23 +57,23 @@ macro_rules! impl_watchdog {
                 'a: 'static,
             {
                 runner: &'a WatchdogOwner<N, [<$Family Watchdog>]>,
-                id: TaskKey,
+                id: u32,
             }
 
             impl<'a, const N: usize> [<$Family TaskWatchdogInner>]<'a, N> {
                 #[inline(always)]
-                pub(crate) fn new(runner: &'a WatchdogOwner<N, [<$Family Watchdog>]>, id: TaskKey) -> Self {
+                pub(crate) fn new(runner: &'a WatchdogOwner<N, [<$Family Watchdog>]>, id: u32) -> Self {
                     Self { runner, id }
                 }
 
                 #[inline(always)]
                 pub async fn feed(&self) {
-                    self.runner.feed(&self.id).await
+                    self.runner.feed(self.id).await
                 }
 
                 #[inline(always)]
                 pub async fn deregister(&self) {
-                    self.runner.deregister_task(&self.id).await
+                    self.runner.deregister_task(self.id).await
                 }
 
                 #[inline(always)]
@@ -118,7 +117,7 @@ macro_rules! impl_watchdog {
 
             #[derive(Clone, Copy)]
             /// A per-task bound handle that lets the task call [`feed`] without IDs.
-            /// 
+            ///
             /// Pass a static reference to this struct to the task, decorated by
             /// [`embassy_task_watchdog::task`] as the first argument.
             pub struct [<$Family TaskWatchdog>]<const N: usize = MAX_TASKS> {
@@ -133,9 +132,8 @@ macro_rules! impl_watchdog {
                     desc: &'static TaskDesc,
                     max_duration: embassy_time::Duration,
                 ) -> [<$Family TaskWatchdogInner>]<'static, N> {
-                    let id = TaskKey::from_desc(desc);
-                    self.inner.register_task(&id, max_duration).await;
-                    [<$Family TaskWatchdogInner>]::new(self.inner, id)
+                    self.inner.register_task(desc.id, desc.name, max_duration).await;
+                    [<$Family TaskWatchdogInner>]::new(self.inner, desc.id)
                 }
             }
 
