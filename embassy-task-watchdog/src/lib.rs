@@ -74,7 +74,7 @@
 //!     watchdog_run(watchdog).await
 //! }
 //! // Implement your main task
-//! #[embassy_task_watchdog::task(max_duration = Duration::from_millis(1500))]
+//! #[embassy_task_watchdog::task(timeout = Duration::from_millis(1500))]
 //! async fn main_task(watchdog: TaskWatchdog) -> ! {
 //!     loop {
 //!         // Feed the watchdog
@@ -84,7 +84,7 @@
 //!     }
 //! }
 //! // Implement your second task
-//! #[embassy_task_watchdog::task(max_duration = Duration::from_millis(2000))]
+//! #[embassy_task_watchdog::task(timeout = Duration::from_millis(2000))]
 //! async fn second_task(watchdog: TaskWatchdog) -> ! {
 //!     loop {
 //!         // Feed the watchdog

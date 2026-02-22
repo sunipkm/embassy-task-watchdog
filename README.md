@@ -85,7 +85,7 @@ let (watchdog, watchdogtask) = Watchdog::new(hw_watchdog, config).build();
 spawner.spawn(watchdog_task(watchdogtask)).unwrap();
 
 // In your application tasks
-#[embassy_task_watchdog::task(max_duration = Duration::from_millis(2000))]
+#[embassy_task_watchdog::task(timeout = Duration::from_millis(2000))]
 async fn main_task(watchdog: TaskWatchdog) -> ! {
     loop {
         // Do work...
