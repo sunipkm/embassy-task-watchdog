@@ -59,6 +59,7 @@ embassy-task-watchdog = { version = "0.0.2", features = ["rp"] } # additionally,
 ```
 
 ### 🛠️ Features
+
 - `rp`: For Raspberry Pi Pico (RP2040) / Pico 2 (RP235xA) or RP235xB based devices. Set up for the correct chip in your `Cargo.toml` by selecting the correct feature in the `embassy-rp` dependency.
   - `defmt-embassy-rp`: [`defmt`](https://docs.rs/defmt/latest/defmt/) debugging for the Embassy executors.
 - `stm32`: For STM32 series of devices. Set up for the correct chip in your `Cargo.toml` by selecting the correct feature in the `embassy-stm32` dependency.
@@ -79,12 +80,22 @@ embassy-task-watchdog = { version = "0.0.2", features = ["rp"] } # additionally,
 Tasks feed the watchdog asynchronously, powered by Embassy:
 
 ```Rust
+// Imports
+use embassy_task_watchdog::{WatchdogConfig, create_watchdog_rp, embassy_rp::{TaskWatchdog, WatchdogRunner, watchdog_run}};
 // Setup, for pico devices
 // Change to create_watchdog_stm32 for STM32 devices
 let (watchdog, watchdogrunner) = create_watchdog_rp!(hw_watchdog, config);
 
-// Spawn the watchdog task itself
-spawner.spawn(watchdog_task(watchdogrunner)).unwrap();
+// Spawn the task and pass the watchdog
+spawner.must_spawn(main_task(watchdog));
+// Spawn the hardware watchdog runner and pass the watchdogrunner
+spawner.must_spawn(watchdog_task(watchdogrunner));
+
+// Define the hardware watchdog runner task
+#[embassy_executor::task]
+async fn watchdog_task(wdtrunner: WatchdogRunner) -> ! {
+  watchdog_run(wdtrunner).await
+}
 
 // In your application tasks
 #[embassy_task_watchdog::task(timeout = Duration::from_millis(2000))]
