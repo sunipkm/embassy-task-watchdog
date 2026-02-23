@@ -1,5 +1,4 @@
 #!/bin/bash
-# This script builds the examples for all features/targets, to make sure they compile correctly.
 current_dir=$(pwd)
 script_dir=$(dirname $(dirname $(readlink -f "$0")))
 
@@ -11,13 +10,17 @@ function cleanup {
 # register the cleanup function to be called on the EXIT signal
 trap cleanup EXIT
 
-# build examples
-echo "Building examples..."
-directories="$script_dir/examples/*"
-for dir in $script_dir/examples/*; do
+# subdirs
+examples="$script_dir/examples/*"
+crates="$script_dir/embassy-task*"
+
+# run cargo fmt on all subdirs
+for dir in $crates $examples; do
     if [ -d "$dir" ]; then
-        echo "Building $dir..."
+        echo "Formatting $dir..."
         cd "$dir"
-        cargo build --release
+        cargo fmt
+    else
+        echo "Skipping $dir, not a directory"
     fi
 done

@@ -5,7 +5,7 @@ use embassy_executor::Spawner;
 use embassy_rp::config::Config;
 use embassy_task_watchdog::{
     WatchdogConfig, create_watchdog_rp,
-    embassy_rp::{WatchdogRunner, TaskWatchdog, watchdog_run},
+    embassy_rp::{TaskWatchdog, WatchdogRunner, watchdog_run},
 };
 use embassy_time::{Duration, Timer};
 use panic_probe as _;

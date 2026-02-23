@@ -53,7 +53,7 @@ macro_rules! impl_watchdog {
 
             /// A per-task bound handle that is created from `TaskWatchdog` by the
             /// [`crate::task`] macro. This handle is re-bound with the same name
-            /// as the original `TaskWatchdog` argument in the task function, 
+            /// as the original `TaskWatchdog` argument in the task function,
             /// and is used by the task to feed the watchdog, trigger a system reset,
             /// or get the reset reason. This struct can be passed to different
             /// functions called by the task.

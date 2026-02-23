@@ -17,7 +17,13 @@
 //!   into a single hardware watchdog, triggering if any task fails to check in
 //! - **Static and Automated Task Management**: Tasks are registered at compile-time,
 //!   allowing hassle-free integration without dynamic memory allocation, and with
-//!   minimal boilerplate using the provided `#[task]` macro.
+//!   minimal boilerplate using the provided `#[task]` macro.  By default, the library
+//!   supports 32 watchdog tasks. The limit can be changed by setting the
+//!   `EMBASSY_TASK_WATCHDOG_MAX_TASKS` variable either in your
+//!   [`.cargo/config.toml`](https://github.com/sunipkm/embassy-task-watchdog/blob/master/examples/task-pico2/.cargo/config.toml), or by passing
+//!   it as an environment variable to cargo, e.g. `EMBASSY_TASK_WATCHDOG_MAX_TASKS=8 cargo build`.
+//!   The check is disabled in debug builds to prevent errors in IDEs, but exceeding the
+//!   number of tasks will trigger a compiler error in the release build.
 //! - **Async Support**: Works with asynchronous (Embassy) execution environments
 //! - **Configurable Timeouts**: Individual timeout durations for each
 //!   registered task
@@ -111,7 +117,10 @@
 //! ```bash
 //! cargo build --features rp,defmt-embassy-rp --target thumbv6m-none-eabi
 //! ```
-//!
+//! #### Note
+//! It is recommended to build the project and run it by writing the build configuration
+//! in `.cargo/config.toml`, and executing `cargo build` without any additional
+//! arguments.
 //!
 //! ### Inspiration
 //! This work is inspired heavily by the `task-watchdog` crate by Piers Finlayson, which provides

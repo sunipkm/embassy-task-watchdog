@@ -11,7 +11,7 @@ A robust, flexible watchdog management library for embedded systems that multipl
 - **⏱️ Configurable Timeouts**: Individual timeout durations for each registered task.
 - **🧪 `no_std` Compatible**: Designed for resource-constrained embedded environments without an operating system.
 - **🦀 Compile-time Total Tasks Check**: By default, the library supports 32 watchdog tasks. The limit can be changed
-  by setting the `EMBASSY_TASK_WATCHDOG_MAX_TASKS` variable either in your [`.cargo/config.toml`](examples/task-pico2/.cargo/config.toml), or by passing it as an environment variable to cargo, e.g. `EMBASSY_TASK_WATCHDOG_MAX_TASKS=8 cargo build`. The check is disabled in debug builds to prevent errors in IDEs, but exceeding the number of tasks will trigger a compiler error in the release build.
+  by setting the `EMBASSY_TASK_WATCHDOG_MAX_TASKS` variable either in your [`.cargo/config.toml`]([examples/task-pico2/.cargo/config.toml](https://github.com/sunipkm/embassy-task-watchdog/blob/master/examples/task-pico2/.cargo/config.toml)), or by passing it as an environment variable to cargo, e.g. `EMBASSY_TASK_WATCHDOG_MAX_TASKS=8 cargo build`. The check is disabled in debug builds to prevent errors in IDEs, but exceeding the number of tasks will trigger a compiler error in the release build.
 
 ## 🚀 Quick Start
 
@@ -32,9 +32,9 @@ Next, [install `probe-rs`](https://probe.rs/docs/getting-started/installation/)
 
 Now connect your Pico/Pico 2/STM32F103C8 device to a connected debug probe, and go into one of:
 
-- For RP2040/Pi Pico: `examples/task-pico`
-- For RP235XA/Pi Pico 2: `examples/task-pico2`
-- For STM32F103C8 (blue pill): `examples/task-stm32`
+- For RP2040/Pi Pico: [`examples/task-pico`](https://github.com/sunipkm/embassy-task-watchdog/tree/master/examples/task-pico)
+- For RP235XA/Pi Pico 2: [`examples/task-pico2`](https://github.com/sunipkm/embassy-task-watchdog/tree/master/examples/task-pico2)
+- For STM32F103C8 (blue pill): [`examples/task-stm32`](https://github.com/sunipkm/embassy-task-watchdog/tree/master/examples/task-stm32)
 
 Then execute
 
@@ -44,9 +44,9 @@ cargo run --release
 
 To understand how to use `embassy-task-watchdog` yourself, check out one of the examples:
 
-- [`task-pico`](examples/task-pico/src/main.rs) - A very basic Pi Pico async example
-- [`task-pico2`](examples/task-pico2/src/main.rs) - A very basic Pi Pico 2 async example
-- [`task-stm32`](examples/task-stm32/src/main.rs) - A very basic Blue Pill async example
+- [`task-pico`](https://github.com/sunipkm/embassy-task-watchdog/tree/master/examples/task-pico/src/main.rs) - A very basic Pi Pico async example
+- [`task-pico2`](https://github.com/sunipkm/embassy-task-watchdog/tree/master/examples/task-pico2/src/main.rs) - A very basic Pi Pico 2 async example
+- [`task-stm32`](https://github.com/sunipkm/embassy-task-watchdog/tree/master/examples/task-stm32/src/main.rs) - A very basic Blue Pill async example
 
 ## 📝 Usage
 
