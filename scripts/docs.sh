@@ -12,8 +12,4 @@ trap cleanup EXIT
 
 cd "$script_dir/embassy-task-watchdog" || exit 1
 
-echo "Building docs-rs documentation..."
-cargo install cargo-docs-rs
-cargo +nightly docs-rs || { echo "Failed to compile docs, exiting."; exit 1; }
-echo "Publishing crate..."
-cargo publish --features dev-rp235xa,defmt-embassy-rp,dev-stm32c031c6,defmt-embassy-stm32,defmt --target thumbv8m.main-none-eabihf $1 $2
+cargo +nightly docs-rs $1

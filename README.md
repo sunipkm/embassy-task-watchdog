@@ -6,12 +6,12 @@ A robust, flexible watchdog management library for embedded systems that multipl
 
 - **🔄 Hardware Agnostic API**: Implements a consistent, asynchronous interface across different embedded microcontrollers by leveraging [`embassy`](https://embassy.dev).
 - **🔀 Task Multiplexing**: Consolidates multiple independent task watchdogs into a single hardware watchdog, triggering if any task fails to check in.
-- **🔌 Compile-time Task Management**: The [`embassy_task_watchdog::task`](https://docs.rs/embassy_task_watchdog_macros/0.0.1/embassy_task_watchdog_macros/fn.task.html) macro replaces [`embassy_executor::task`](https://docs.embassy.dev/embassy-executor/git/cortex-m/attr.task.html), and automatically registers the task with the Watchdog.
+- **🔌 Compile-time Task Management**: The [`embassy_task_watchdog::task`](https://docs.rs/embassy_task_watchdog_macros/latest/embassy_task_watchdog_macros/attr.task.html) macro replaces [`embassy_executor::task`](https://docs.embassy.dev/embassy-executor/git/cortex-m/attr.task.html), and automatically registers the task with the Watchdog.
 - **📦 No-alloc Mode**: All memory allocations are performed during compilation.
 - **⏱️ Configurable Timeouts**: Individual timeout durations for each registered task.
 - **🧪 `no_std` Compatible**: Designed for resource-constrained embedded environments without an operating system.
 - **🦀 Compile-time Total Tasks Check**: By default, the library supports 32 watchdog tasks. The limit can be changed
-  by setting the `EMBASSY_TASK_WATCHDOG_MAX_TASKS` variable either in your [`.cargo/config.toml`]([examples/task-pico2/.cargo/config.toml](https://github.com/sunipkm/embassy-task-watchdog/blob/master/examples/task-pico2/.cargo/config.toml)), or by passing it as an environment variable to cargo, e.g. `EMBASSY_TASK_WATCHDOG_MAX_TASKS=8 cargo build`. The check is disabled in debug builds to prevent errors in IDEs, but exceeding the number of tasks will trigger a compiler error in the release build.
+  by setting the `EMBASSY_TASK_WATCHDOG_MAX_TASKS` variable either in [your `.cargo/config.toml`]([examples/task-pico2/.cargo/config.toml](https://github.com/sunipkm/embassy-task-watchdog/blob/master/examples/task-pico2/.cargo/config.toml)), or by passing it as an environment variable to cargo, e.g. `EMBASSY_TASK_WATCHDOG_MAX_TASKS=8 cargo build`. The check is disabled in debug builds to prevent errors in IDEs, but exceeding the number of tasks will trigger a compiler error in the release build.
 
 ## 🚀 Quick Start
 
@@ -81,10 +81,14 @@ Tasks feed the watchdog asynchronously, powered by Embassy:
 
 ```Rust
 // Imports
-use embassy_task_watchdog::{WatchdogConfig, create_watchdog_rp, embassy_rp::{TaskWatchdog, WatchdogRunner, watchdog_run}};
-// Setup, for pico devices
-// Change to create_watchdog_stm32 for STM32 devices
-let (watchdog, watchdogrunner) = create_watchdog_rp!(hw_watchdog, config);
+use embassy_task_watchdog::{
+  WatchdogConfig, create_watchdog, 
+  embassy_rp::{
+    TaskWatchdog, WatchdogRunner, watchdog_run
+  }
+};
+// Setup
+let (watchdog, watchdogrunner) = create_watchdog!(hw_watchdog, config);
 
 // Spawn the task and pass the watchdog
 spawner.must_spawn(main_task(watchdog));

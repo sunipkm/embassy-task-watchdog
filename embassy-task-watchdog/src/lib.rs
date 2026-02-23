@@ -19,8 +19,8 @@
 //!   allowing hassle-free integration without dynamic memory allocation, and with
 //!   minimal boilerplate using the provided `#[task]` macro.  By default, the library
 //!   supports 32 watchdog tasks. The limit can be changed by setting the
-//!   `EMBASSY_TASK_WATCHDOG_MAX_TASKS` variable either in your
-//!   [`.cargo/config.toml`](https://github.com/sunipkm/embassy-task-watchdog/blob/master/examples/task-pico2/.cargo/config.toml), or by passing
+//!   `EMBASSY_TASK_WATCHDOG_MAX_TASKS` variable either in
+//!   [your `.cargo/config.toml`](https://github.com/sunipkm/embassy-task-watchdog/blob/master/examples/task-pico2/.cargo/config.toml), or by passing
 //!   it as an environment variable to cargo, e.g. `EMBASSY_TASK_WATCHDOG_MAX_TASKS=8 cargo build`.
 //!   The check is disabled in debug builds to prevent errors in IDEs, but exceeding the
 //!   number of tasks will trigger a compiler error in the release build.
@@ -45,7 +45,7 @@
 //! # use embassy_executor::Spawner;
 //! # use embassy_rp::config::Config;
 //! # use embassy_task_watchdog::{
-//! #     WatchdogConfig, create_watchdog_rp,
+//! #     WatchdogConfig, create_watchdog,
 //! #     embassy_rp::{TaskWatchdog, WatchdogRunner, watchdog_run},
 //! # };
 //! # use embassy_time::{Duration, Timer};
@@ -57,7 +57,7 @@
 //!     // Initialize the hardare peripherals
 //!     let p = embassy_rp::init(Config::default());
 //!     // Create the watchdog runner, store it in a static cell, and get the watchdog and watchdog runner task.
-//!     let (watchdog, watchdogtask) = create_watchdog_rp!(p.WATCHDOG, config);
+//!     let (watchdog, watchdogtask) = create_watchdog!(p.WATCHDOG, config);
 //!     // Spawn tasks that will feed the watchdog
 //!     spawner.must_spawn(main_task(watchdog));
 //!     spawner.must_spawn(second_task(watchdog));
@@ -109,6 +109,8 @@
 //! - `defmt-embassy-rp`: Enable logging with defmt for the RP2040 and RP2350 embassy
 //! - `stm32`: Enable the STM32 MCU-specific embassy implementation
 //! - `defmt-embassy-stm32`: Enable logging with defmt for the STM32 embassy
+//! - `defmt`: Enable [`defmt`] logging of associated structs and enums.
+//! - `defmt-messages`: Enable `defmt` logging of events and errors in the library.
 //!
 //! ### Example Feature/Target combination
 //!
@@ -144,6 +146,7 @@
 
 #![no_std]
 #![warn(missing_docs)]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 mod runtime;
 use embassy_time::Duration;
@@ -273,13 +276,14 @@ mod impl_macro;
 ///
 /// This module requires the `rp` feature flag to be enabled.
 ///
-/// The main entrypoint into this module is the [`create_watchdog_rp`] macro, which returns
+/// The main entrypoint into this module is the [`create_watchdog`] macro, which returns
 /// the [`embassy_rp::TaskWatchdog`] passed to the tasks, and the [`embassy_rp::WatchdogRunner`] passed to the
 /// [`embassy_rp::watchdog_run`] function.  See the documentation for that macro for more details and an example.
 ///
 /// There is an equivalent `embassy_stm32` module for STM32, enabled by
 /// the `stm32` feature flag.
 #[cfg(feature = "rp")]
+#[cfg_attr(docsrs, doc(cfg(feature = "rp")))]
 pub mod embassy_rp;
 
 /// An async implementation of embassy-task-watchdog for use with the STM32
@@ -287,11 +291,66 @@ pub mod embassy_rp;
 ///
 /// This module requires the `stm32` feature flag to be enabled.
 ///
-/// The main entrypoint into this module is the [`create_watchdog_stm32`] macro, which returns
+/// The main entrypoint into this module is the [`create_watchdog`] macro, which returns
 /// the [`embassy_stm32::TaskWatchdog`] passed to the tasks, and the [`embassy_stm32::WatchdogRunner`] passed to the
 /// [`embassy_stm32::watchdog_run`] function.  See the documentation for that macro for more details and an example.
 ///
 /// There is an equivalent `embassy_rp` module for RP2040 and RP2350, enabled by
 /// the `rp` feature flag.
 #[cfg(feature = "stm32")]
+#[cfg_attr(docsrs, doc(cfg(feature = "stm32")))]
 pub mod embassy_stm32;
+
+/// Initialize the static memory for the watchdog, and return the watchdog and
+/// the watchdog runner task. Pass the [`TaskWatchdog` struct](https://docs.rs/embassy-task-watchdog/latest/embassy_task_watchdog/embassy_rp/struct.RpTaskWatchdog.html) 
+/// to your tasks to be able to feed the watchdog. Pass the 
+/// [`WatchdogRunner` struct](https://docs.rs/embassy-task-watchdog/latest/embassy_task_watchdog/embassy_rp/struct.RpWatchdogRunner.html) 
+/// to the [`watchdog_run` function](https://docs.rs/embassy-task-watchdog/latest/embassy_task_watchdog/embassy_rp/fn.watchdog_run.html) 
+/// inside a spawned task to monitor the tasks and feed the hardware watchdog.
+#[cfg(all(feature = "rp", not(feature = "stm32")))]
+#[macro_export]
+macro_rules! create_watchdog {
+    ($wdt: expr, $config: expr) => {{
+        use $crate::embassy_rp::Watchdog;
+        // Create a static to hold the task-watchdog object, so it has static
+        // lifetime and can be shared with tasks.
+        static WATCHDOG: StaticCell<Watchdog> = StaticCell::new();
+        // Create the watchdog runner and store it in the static cell
+        let watchdog = Watchdog::new($wdt, $config);
+        WATCHDOG.init(watchdog).build()
+    }};
+}
+
+#[macro_export]
+#[cfg(all(feature = "stm32", not(feature = "rp")))]
+/// Initialize the static memory for the watchdog, and return the watchdog and
+/// the watchdog runner task. Pass the [`TaskWatchdog` struct](https://docs.rs/embassy-task-watchdog/latest/embassy_task_watchdog/embassy_stm32/struct.Stm32TaskWatchdog.html) 
+/// to your tasks to be able to feed the watchdog. Pass the 
+/// [`WatchdogRunner` struct](https://docs.rs/embassy-task-watchdog/latest/embassy_task_watchdog/embassy_stm32/struct.Stm32WatchdogRunner.html) 
+/// to the [`watchdog_run` function](https://docs.rs/embassy-task-watchdog/latest/embassy_task_watchdog/embassy_stm32/fn.watchdog_run.html) 
+/// inside a spawned task to monitor the tasks and feed the hardware watchdog.
+macro_rules! create_watchdog {
+    ($wdt: expr, $config: expr) => {{
+        use $crate::embassy_stm32::Watchdog;
+        // Create a static to hold the task-watchdog object, so it has static
+        // lifetime and can be shared with tasks.
+        static WATCHDOG: StaticCell<Watchdog> = StaticCell::new();
+        // Create the watchdog runner and store it in the static cell
+        let watchdog = Watchdog::new($wdt, $config);
+        WATCHDOG.init(watchdog).build()
+    }};
+}
+
+#[cfg(all(feature = "stm32", feature = "rp"))]
+#[macro_export]
+/// Initialize the static memory for the watchdog, and return the watchdog and
+/// the watchdog runner task. Pass the [`TaskWatchdog` struct](https://docs.rs/embassy-task-watchdog/latest/embassy_task_watchdog/embassy_rp/struct.RpTaskWatchdog.html) 
+/// to your tasks to be able to feed the watchdog. Pass the 
+/// [`WatchdogRunner` struct](https://docs.rs/embassy-task-watchdog/latest/embassy_task_watchdog/embassy_rp/struct.RpWatchdogRunner.html) 
+/// to the [`watchdog_run` function](https://docs.rs/embassy-task-watchdog/latest/embassy_task_watchdog/embassy_rp/fn.watchdog_run.html) 
+/// inside a spawned task to monitor the tasks and feed the hardware watchdog.
+macro_rules! create_watchdog {
+    ($wdt: expr, $config: expr) => {
+        compile_error!("Cannot use create_watchdog macro with both rp and stm32 features enabled. Please choose one or the other.")
+    };
+}

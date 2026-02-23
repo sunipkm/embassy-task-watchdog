@@ -6,7 +6,7 @@ A robust, flexible watchdog management library for embedded systems that multipl
 
 - **Hardware Agnostic API**: Implements a consistent, asynchronous interface across different embedded microcontrollers by leveraging [`embassy`](https://embassy.dev).
 - **Task Multiplexing**: Consolidates multiple independent task watchdogs into a single hardware watchdog, triggering if any task fails to check in.
-- **Compile-time Task Management**: The [`embassy_task_watchdog::task`](https://docs.rs/embassy_task_watchdog_macros/0.0.1/embassy_task_watchdog_macros/fn.task.html) macro replaces [`embassy_executor::task`](https://docs.embassy.dev/embassy-executor/git/cortex-m/attr.task.html), and automatically registers the task with the Watchdog.
+- **Compile-time Task Management**: The [`embassy_task_watchdog::task`](https://docs.rs/embassy_task_watchdog_macros/latest/embassy_task_watchdog_macros/attr.task.html) macro replaces [`embassy_executor::task`](https://docs.embassy.dev/embassy-executor/git/cortex-m/attr.task.html), and automatically registers the task with the Watchdog.
 - **No-alloc Mode**: Functions in `no_alloc` mode for environments without heap availability.
 - **Configurable Timeouts**: Individual timeout durations for each registered task.
 - **`no_std` Compatible**: Designed for resource-constrained embedded environments without an operating system.
@@ -80,10 +80,10 @@ Tasks feed the watchdog asynchronously, powered by Embassy:
 
 ```Rust
 // Setup
-let (watchdog, watchdogtask) = Watchdog::new(hw_watchdog, config).build();
+let (watchdog, watchdogtask) = create_watchdog!(hw_watchdog, config);
 
 // Spawn the watchdog task itself
-spawner.spawn(watchdog_task(watchdogtask)).unwrap();
+spawner.must_spawn(watchdog_task(watchdogtask));
 
 // In your application tasks
 #[embassy_task_watchdog::task(timeout = Duration::from_millis(2000))]

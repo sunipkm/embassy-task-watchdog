@@ -1,5 +1,9 @@
 # Change Log for `embassy-task-watchdog`
 
+### v0.0.5
+- Removed separate `create_watchdog_*` macros, and consolidated the functionality into a single `create_watchdog` macro.
+- Marking components activated by features in documentation.
+
 ### v0.0.4
 
 - Removed `usize` bounds since the maximum number of tasks is constrained by `MAX_TASKS`
