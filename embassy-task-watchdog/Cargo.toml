@@ -1,6 +1,6 @@
 [package]
 name = "embassy-task-watchdog"
-version = "0.0.3"
+version = "0.0.4"
 edition = "2024"
 authors = ["Sunip K. Mukherjee <sunipkmukherjee@gmail.com>"]
 description = "A robust, flexible watchdog management library for embedded systems that multiplexes multiple task watchdogs into a single hardware watchdog timer, preventing system lockups when tasks fail to respond"

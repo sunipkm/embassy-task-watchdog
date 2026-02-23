@@ -51,7 +51,7 @@ impl Task {
 }
 
 /// A Watchdog that monitors multiple tasks and feeds a hardware watchdog accordingly.
-pub(crate) struct WatchdogContainer<const N: usize, W>
+pub(crate) struct WatchdogContainer<W>
 where
     W: HardwareWatchdog,
 {
@@ -59,13 +59,13 @@ where
     pub hw_watchdog: W,
 
     /// Tasks being monitored.
-    pub tasks: [Option<Task>; N],
+    pub tasks: [Option<Task>; MAX_TASKS],
 
     /// Configuration.
     pub config: WatchdogConfig,
 }
 
-impl<W: HardwareWatchdog, const N: usize> WatchdogContainer<N, W> {
+impl<W: HardwareWatchdog> WatchdogContainer<W> {
     /// Create a new watchdog with the given hardware watchdog and configuration.
     ///
     /// Arguments:
@@ -75,7 +75,7 @@ impl<W: HardwareWatchdog, const N: usize> WatchdogContainer<N, W> {
     pub(crate) fn new(hw_watchdog: W, config: WatchdogConfig) -> Self {
         Self {
             hw_watchdog,
-            tasks: [const { None }; N],
+            tasks: [const { None }; MAX_TASKS],
             config,
         }
     }
@@ -193,11 +193,11 @@ impl<W: HardwareWatchdog, const N: usize> WatchdogContainer<N, W> {
     }
 }
 
-pub(crate) struct WatchdogOwner<const N: usize, W: HardwareWatchdog> {
-    watchdog: Mutex<CriticalSectionRawMutex, RefCell<WatchdogContainer<N, W>>>,
+pub(crate) struct WatchdogOwner<W: HardwareWatchdog> {
+    watchdog: Mutex<CriticalSectionRawMutex, RefCell<WatchdogContainer<W>>>,
 }
 
-impl<const N: usize, W: HardwareWatchdog> WatchdogOwner<N, W> {
+impl<W: HardwareWatchdog> WatchdogOwner<W> {
     /// Create a new Embassy-compatible watchdog runner.
     pub(crate) fn new(hw_watchdog: W, config: WatchdogConfig) -> Self {
         let watchdog = WatchdogContainer::new(hw_watchdog, config);

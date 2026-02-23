@@ -34,7 +34,7 @@ critical-section = "1.2"
 panic-probe = { version = "1.0", features = ["print-defmt"] }
 static_cell = "2.1"
 portable-atomic = { version = "1.11", features = ["critical-section"] }
-embassy-task-watchdog = { version = "0.0.3", path = "../../embassy-task-watchdog", features = [
+embassy-task-watchdog = { version = "0.0.4", path = "../../embassy-task-watchdog", features = [
     "rp",
     "defmt",
     "defmt-messages",

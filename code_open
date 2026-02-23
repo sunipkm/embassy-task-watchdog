@@ -1,6 +1,16 @@
 #!/bin/bash
 examples=0
 repos=0
+current_dir=$(pwd)
+script_dir=$(dirname $(readlink -f "$0"))
+example_dirs="$script_dir/examples/*"
+
+function cleanup() {
+    cd "$current_dir" || exit 1
+}
+
+trap cleanup EXIT
+
 while getopts "er" opt; do
     case $opt in
         e) examples=1 ;;
@@ -17,10 +27,11 @@ fi
 
 if [ $examples -eq 1 ]; then
     echo "Opening examples..."
-    # Add commands to open examples here
-    code examples/task-pico
-    code examples/task-pico2
-    code examples/task-stm32
+    for dir in $example_dirs; do
+        if [ -d "$dir" ]; then
+            code "$dir"
+        fi
+    done
 fi
 
 if [ $repos -eq 1 ]; then

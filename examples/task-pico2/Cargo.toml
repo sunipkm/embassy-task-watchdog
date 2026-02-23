@@ -24,10 +24,9 @@ embassy-rp = { version = "0.9", features = [
     "rp235xa",
 ] }
 
-embassy-task-watchdog = { version = "0.0.3", path = "../../embassy-task-watchdog", features = [
+embassy-task-watchdog = { version = "0.0.4", path = "../../embassy-task-watchdog", features = [
     "rp",
     "defmt",
-    "defmt-messages",
 ] }
 defmt = { version = "1.0", default-features = false }
 defmt-rtt = "1.1"

@@ -42,7 +42,7 @@ impl HardwareWatchdog for Stm32Watchdog {
 
 crate::impl_watchdog!(Stm32);
 
-impl<const N: usize> Stm32WatchdogSetup<N> {
+impl Stm32WatchdogSetup {
     /// Create a new STM32 watchdog setup.
     pub fn new(hw_watchdog: Peri<'static, IWDG>, config: WatchdogConfig) -> Self {
         let hw_watchdog = Stm32Watchdog::new(hw_watchdog, config.check_interval.as_micros() as u32);

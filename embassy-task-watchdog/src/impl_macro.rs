@@ -5,18 +5,18 @@ macro_rules! impl_watchdog {
     ($Family: ident) => {
         use paste::paste;
         paste!{
-            use $crate::{MAX_TASKS, runtime::WatchdogOwner};
+            use $crate::runtime::WatchdogOwner;
             /// The WatchdogRunner for this family of watchdogs.  This is the struct you pass to the [`watchdog_run`] function.
-            pub struct [<$Family WatchdogRunner>]<const N: usize = MAX_TASKS> {
-                runner: &'static WatchdogOwner<N, [<$Family Watchdog>]>,
+            pub struct [<$Family WatchdogRunner>] {
+                runner: &'static WatchdogOwner<[<$Family Watchdog>]>,
             }
 
-            impl<const N: usize> WatchdogOwner<N, [<$Family Watchdog>]> {
+            impl WatchdogOwner<[<$Family Watchdog>]> {
                 /// Used to create a watchdog task when not using the alloc feature.
                 ///
                 /// There is an equivalent version of this when using the `alloc` feature
                 /// which does not include the `const N: usize` type.
-                pub(crate) fn create_task(&'static self) -> [<$Family WatchdogRunner>]<N> {
+                pub(crate) fn create_task(&'static self) -> [<$Family WatchdogRunner>] {
                     [<$Family WatchdogRunner>] { runner: self }
                 }
             }
@@ -27,7 +27,7 @@ macro_rules! impl_watchdog {
             /// You must call this function from an async task to start and run the
             /// watchdog.  Using `spawner.must_spawn(watchdog_run(watchdog))` would
             /// likely be a good choice.
-            pub async fn watchdog_run<const N: usize>(task: [<$Family WatchdogRunner>]<N>) -> ! {
+            pub async fn watchdog_run(task: [<$Family WatchdogRunner>]) -> ! {
                 debug!("Watchdog runner started");
 
                 // Start the watchdog
@@ -57,17 +57,17 @@ macro_rules! impl_watchdog {
             /// and is used by the task to feed the watchdog, trigger a system reset,
             /// or get the reset reason. This struct can be passed to different
             /// functions called by the task.
-            pub struct [<$Family BoundWatchdog>]<'a, const N: usize>
+            pub struct [<$Family BoundWatchdog>]<'a>
             where
                 'a: 'static,
             {
-                runner: &'a WatchdogOwner<N, [<$Family Watchdog>]>,
+                runner: &'a WatchdogOwner<[<$Family Watchdog>]>,
                 id: u32,
             }
 
-            impl<'a, const N: usize> [<$Family BoundWatchdog>]<'a, N> {
+            impl<'a> [<$Family BoundWatchdog>]<'a> {
                 #[inline(always)]
-                pub(crate) fn new(runner: &'a WatchdogOwner<N, [<$Family Watchdog>]>, id: u32) -> Self {
+                pub(crate) fn new(runner: &'a WatchdogOwner<[<$Family Watchdog>]>, id: u32) -> Self {
                     Self { runner, id }
                 }
 
@@ -100,15 +100,15 @@ macro_rules! impl_watchdog {
 
             /// The WatchdogSetup for this family of watchdogs.  This is the struct you create with `new()` and pass to the `build()` function to get the WatchdogRunner and TaskWatchdog.
             #[doc(hidden)]
-            pub struct [<$Family WatchdogSetup>]<const N: usize = MAX_TASKS> {
-                inner: WatchdogOwner<N, [<$Family Watchdog>]>,
+            pub struct [<$Family WatchdogSetup>] {
+                inner: WatchdogOwner<[<$Family Watchdog>]>,
             }
 
-            impl<const N: usize> [<$Family WatchdogSetup>]<N> {
+            impl [<$Family WatchdogSetup>] {
                 #[inline(always)]
                 #[must_use]
                 /// Build the WatchdogRunner and TaskWatchdog for this family of watchdogs.
-                pub fn build(&'static self) -> ([<$Family TaskWatchdog>]<N>, [<$Family WatchdogRunner>]<N>) {
+                pub fn build(&'static self) -> ([<$Family TaskWatchdog>], [<$Family WatchdogRunner>]) {
                     let iface = [<$Family TaskWatchdog>] { inner: &self.inner };
                     let task = self.create_task();
                     (iface, task)
@@ -117,11 +117,11 @@ macro_rules! impl_watchdog {
                 // If you want to expose other runner methods, forward them:
                 #[inline(always)]
                 #[must_use]
-                fn create_task(&'static self) -> [<$Family WatchdogRunner>]<N> {
+                fn create_task(&'static self) -> [<$Family WatchdogRunner>] {
                     // use your existing create_task() on inner
                     // (we need a &'static self; enforce via caller)
                     // SAFETY: self is &'static in signature.
-                    let inner: &'static WatchdogOwner<N, [<$Family Watchdog>]> =
+                    let inner: &'static WatchdogOwner<[<$Family Watchdog>]> =
                         unsafe { &*(&self.inner as *const _) };
                     inner.create_task()
                 }
@@ -136,18 +136,18 @@ macro_rules! impl_watchdog {
             ///
             /// Pass this struct to the task, decorated by
             /// [`crate::task`] as the first argument.
-            pub struct [<$Family TaskWatchdog>]<const N: usize = MAX_TASKS> {
-                inner: &'static WatchdogOwner<N, [<$Family Watchdog>]>,
+            pub struct [<$Family TaskWatchdog>] {
+                inner: &'static WatchdogOwner<[<$Family Watchdog>]>,
             }
 
-            impl<const N: usize> [<$Family TaskWatchdog>]<N> {
+            impl [<$Family TaskWatchdog>]{
                 #[inline(always)]
                 #[doc(hidden)]
                 pub async fn register_desc(
                     self,
                     desc: &'static TaskDesc,
                     max_duration: Duration,
-                ) -> [<$Family BoundWatchdog>]<'static, N> {
+                ) -> [<$Family BoundWatchdog>]<'static> {
                     self.inner.register_task(desc.id, desc.name, max_duration).await;
                     [<$Family BoundWatchdog>]::new(self.inner, desc.id)
                 }
