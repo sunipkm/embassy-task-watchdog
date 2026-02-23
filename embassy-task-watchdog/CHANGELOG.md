@@ -2,6 +2,7 @@
 
 ### v0.0.5
 - Removed separate `create_watchdog_*` macros, and consolidated the functionality into a single `create_watchdog` macro.
+- `create_watchdog` uses `static_cell::StaticCell` in its own context.
 - Marking components activated by features in documentation.
 
 ### v0.0.4

@@ -10,6 +10,15 @@ function cleanup {
 # register the cleanup function to be called on the EXIT signal
 trap cleanup EXIT
 
+examples="$script_dir/examples/*"
+for dir in $examples; do
+    if [ -d "$dir" ]; then
+        echo "Building $dir..."
+        cd "$dir"
+        cargo build --release || { echo "Failed to build $dir, exiting."; exit 1; }
+    fi
+done
+
 cd "$script_dir/embassy-task-watchdog" || exit 1
 
 echo "Building docs-rs documentation..."

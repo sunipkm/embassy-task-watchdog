@@ -9,7 +9,6 @@ use embassy_task_watchdog::{
 };
 use embassy_time::{Duration, Timer};
 use panic_probe as _;
-use static_cell::StaticCell;
 
 #[embassy_executor::main]
 async fn main(spawner: Spawner) {

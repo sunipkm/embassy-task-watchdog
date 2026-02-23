@@ -14,7 +14,7 @@ trap cleanup EXIT
 # build examples
 echo "Building examples..."
 directories="$script_dir/examples/*"
-for dir in $script_dir/examples/*; do
+for dir in $directories; do
     if [ -d "$dir" ]; then
         echo "Building $dir..."
         cd "$dir"

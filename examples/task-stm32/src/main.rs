@@ -8,7 +8,6 @@ use embassy_task_watchdog::{
     embassy_stm32::{TaskWatchdog, WatchdogRunner, watchdog_run},
 };
 use embassy_time::{Duration, Timer};
-use static_cell::StaticCell;
 use {defmt_rtt as _, panic_probe as _};
 
 #[embassy_executor::main]
