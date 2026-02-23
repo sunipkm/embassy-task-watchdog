@@ -226,6 +226,7 @@ pub enum ResetReason {
 
 /// Configuration for the watchdog.
 #[derive(Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct WatchdogConfig {
     /// Timeout to start the hardware watchdog with.
     pub(crate) hardware_timeout: Duration,
