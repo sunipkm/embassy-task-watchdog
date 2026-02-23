@@ -7,7 +7,7 @@ A robust, flexible watchdog management library for embedded systems that multipl
 - **🔄 Hardware Agnostic API**: Implements a consistent, asynchronous interface across different embedded microcontrollers by leveraging [`embassy`](https://embassy.dev).
 - **🔀 Task Multiplexing**: Consolidates multiple independent task watchdogs into a single hardware watchdog, triggering if any task fails to check in.
 - **🔌 Compile-time Task Management**: The [`embassy_task_watchdog::task`](https://docs.rs/embassy_task_watchdog_macros/0.0.1/embassy_task_watchdog_macros/fn.task.html) macro replaces [`embassy_executor::task`](https://docs.embassy.dev/embassy-executor/git/cortex-m/attr.task.html), and automatically registers the task with the Watchdog.
-- **📦 No-alloc Mode**: Functions in `no_alloc` mode for environments without heap availability.
+- **📦 No-alloc Mode**: All memory allocations are performed during compilation.
 - **⏱️ Configurable Timeouts**: Individual timeout durations for each registered task.
 - **🧪 `no_std` Compatible**: Designed for resource-constrained embedded environments without an operating system.
 - **🦀 Compile-time Total Tasks Check**: By default, the library supports 32 watchdog tasks. The limit can be changed
