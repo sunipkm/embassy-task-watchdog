@@ -1,6 +1,9 @@
 # Change Log for `embassy-task-watchdog`
 
 ### v0.0.5
+
+- Bumped `embassy-task-watchdog-macros` to `v0.0.3`.
+- Reduced memory usage of internal `TaskDesc` static variable.
 - Removed separate `create_watchdog_*` macros, and consolidated the functionality into a single `create_watchdog` macro.
 - `create_watchdog` uses `static_cell::StaticCell` in its own context.
 - Marking components activated by features in documentation.

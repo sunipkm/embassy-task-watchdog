@@ -146,10 +146,11 @@ macro_rules! impl_watchdog {
                 pub async fn register_desc(
                     self,
                     desc: &'static TaskDesc,
+                    id: u32,
                     max_duration: Duration,
                 ) -> [<$Family BoundWatchdog>]<'static> {
-                    self.inner.register_task(desc.id, desc.name, max_duration).await;
-                    [<$Family BoundWatchdog>]::new(self.inner, desc.id)
+                    self.inner.register_task(id, desc.name, max_duration).await;
+                    [<$Family BoundWatchdog>]::new(self.inner, id)
                 }
 
                 #[inline(always)]

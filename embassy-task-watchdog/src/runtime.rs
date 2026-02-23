@@ -10,7 +10,6 @@ use crate::{
 #[repr(C)]
 #[doc(hidden)]
 pub struct TaskDesc {
-    pub id: u32,
     pub name: &'static str,
 }
 

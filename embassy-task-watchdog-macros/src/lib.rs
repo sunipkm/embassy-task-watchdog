@@ -1,7 +1,7 @@
 use core::sync::atomic::{AtomicU32, Ordering};
 
 use proc_macro::TokenStream;
-use quote::{format_ident, quote};
+use quote::{ToTokens, format_ident, quote};
 use syn::{
     Expr, FnArg, Ident, ItemFn, MetaNameValue, Pat, PatIdent, Result, Token,
     parse::{Parse, ParseStream},
@@ -104,9 +104,12 @@ fn first_param_ident(fn_item: &ItemFn) -> Result<Ident> {
 /// (defaults to 32), and will produce a compile error if more tasks are defined. In debug builds, this
 /// check is skipped to allow for continuous integration testing without needing to adjust the limit.
 pub fn task(attr: TokenStream, item: TokenStream) -> TokenStream {
+    // Parse the input attributes into a syntax tree, as TaskArgs
     let args = parse_macro_input!(attr as TaskArgs);
+    // Parse the input item into a syntax tree, as a function
     let f = parse_macro_input!(item as ItemFn);
 
+    // Check function is async
     if f.sig.asyncness.is_none() {
         return syn::Error::new(
             f.sig.span(),
@@ -115,12 +118,33 @@ pub fn task(attr: TokenStream, item: TokenStream) -> TokenStream {
         .to_compile_error()
         .into();
     }
-
+    // Check function returns !
+    match f.sig.output {
+        syn::ReturnType::Default => {
+            return syn::Error::new(
+                f.sig.output.span(),
+                "#[embassy_task_watchdog::task] function must return ! (never)",
+            )
+            .to_compile_error()
+            .into();
+        }
+        syn::ReturnType::Type(_, ref ty) => {
+            if ty.to_token_stream().to_string() != "!" {
+                return syn::Error::new(
+                    ty.span(),
+                    "#[embassy_task_watchdog::task] function must return ! (never)",
+                )
+                .to_compile_error()
+                .into();
+            }
+        }
+    }
+    // Get the identifier of the first parameter, which will be used as the watchdog runner reference
     let wd_ident = match first_param_ident(&f) {
         Ok(i) => i,
         Err(e) => return e.to_compile_error().into(),
     };
-
+    // Generate a unique descriptor ID for this task, and check against the limit in release builds
     let desc_id = TASK_ID.fetch_add(1, Ordering::SeqCst);
     #[cfg(not(debug_assertions))]
     if desc_id >= MAX_TASKS as _ {
@@ -133,36 +157,36 @@ pub fn task(attr: TokenStream, item: TokenStream) -> TokenStream {
         .to_compile_error()
         .into();
     }
-
+    // Extract the function visibility, signature, identifier, and body block for later use in code generation
     let vis = &f.vis;
     let sig = &f.sig;
     let fn_ident = &f.sig.ident;
     let block = &f.block;
-
+    // Create a unique identifier for the task descriptor static variable, based on the function name
     let desc_ident = format_ident!(
         "__EMBASSY_TASK_WATCHDOG_DESC_{}",
         fn_ident.to_string().to_uppercase()
     );
-
+    // Extract the timeout expression from the macro arguments for later use in code generation
     let max_expr = args.timeout;
-
+    // Generate the output tokens for the task function, which includes:
+    // - A static task descriptor with the unique ID and function name
+    // - Registering the watchdog runner reference as a bound watchdog with the descriptor and timeout
+    // - The user body of the function, which now has access to the bound watchdog for feeding
     let expanded = quote! {
 
         #[embassy_executor::task]
         #vis #sig {
-            // Unique descriptor: address acts as identity (no linker section)
+            // Unique descriptor: contains the (no linker section)
             static #desc_ident: ::embassy_task_watchdog::TaskDesc = ::embassy_task_watchdog::TaskDesc {
                 name: ::core::stringify!(#fn_ident),
-                id: #desc_id,
             };
             // Convert runner ref into a per-task bound watchdog
-            let #wd_ident = #wd_ident.register_desc(&#desc_ident, #max_expr).await;
+            let #wd_ident = #wd_ident.register_desc(&#desc_ident, #desc_id, #max_expr).await;
             {
                 // User body now sees #wd_ident: BoundWatchdog
                 #block
             }
-            #[allow(unreachable_code)]
-            #wd_ident._deregister().await;
         }
     };
 
