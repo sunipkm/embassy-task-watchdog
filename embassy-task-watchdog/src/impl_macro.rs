@@ -49,8 +49,6 @@ macro_rules! impl_watchdog {
                 }
             }
 
-            use super::TaskDesc;
-
             /// A per-task bound handle that is created from `TaskWatchdog` by the
             /// [`crate::task`] macro. This handle is re-bound with the same name
             /// as the original `TaskWatchdog` argument in the task function,
@@ -145,11 +143,11 @@ macro_rules! impl_watchdog {
                 #[doc(hidden)]
                 pub async fn register_desc(
                     self,
-                    desc: &'static TaskDesc,
+                    name: &'static str,
                     id: u32,
                     max_duration: Duration,
                 ) -> [<$Family BoundWatchdog>]<'static> {
-                    self.inner.register_task(id, desc.name, max_duration).await;
+                    self.inner.register_task(id, name, max_duration).await;
                     [<$Family BoundWatchdog>]::new(self.inner, id)
                 }
 

@@ -10,6 +10,8 @@ function cleanup {
 # register the cleanup function to be called on the EXIT signal
 trap cleanup EXIT
 
+"$script_dir/scripts/fmt.sh"
+
 examples="$script_dir/examples/*"
 for dir in $examples; do
     if [ -d "$dir" ]; then

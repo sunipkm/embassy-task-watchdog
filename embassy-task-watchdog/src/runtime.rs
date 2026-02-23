@@ -6,13 +6,6 @@ use crate::{
     Error, HardwareWatchdog, MAX_TASKS, ResetReason, WatchdogConfig, debug, error, info, warn,
 };
 
-/// Descriptor emitted by the proc-macro.
-#[repr(C)]
-#[doc(hidden)]
-pub struct TaskDesc {
-    pub name: &'static str,
-}
-
 /// Represents a task monitored by the watchdog.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]

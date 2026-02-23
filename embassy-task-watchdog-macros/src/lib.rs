@@ -1,7 +1,7 @@
 use core::sync::atomic::{AtomicU32, Ordering};
 
 use proc_macro::TokenStream;
-use quote::{ToTokens, format_ident, quote};
+use quote::{ToTokens, quote};
 use syn::{
     Expr, FnArg, Ident, ItemFn, MetaNameValue, Pat, PatIdent, Result, Token,
     parse::{Parse, ParseStream},
@@ -162,13 +162,9 @@ pub fn task(attr: TokenStream, item: TokenStream) -> TokenStream {
     let sig = &f.sig;
     let fn_ident = &f.sig.ident;
     let block = &f.block;
-    // Create a unique identifier for the task descriptor static variable, based on the function name
-    let desc_ident = format_ident!(
-        "__EMBASSY_TASK_WATCHDOG_DESC_{}",
-        fn_ident.to_string().to_uppercase()
-    );
     // Extract the timeout expression from the macro arguments for later use in code generation
     let max_expr = args.timeout;
+
     // Generate the output tokens for the task function, which includes:
     // - A static task descriptor with the unique ID and function name
     // - Registering the watchdog runner reference as a bound watchdog with the descriptor and timeout
@@ -177,12 +173,8 @@ pub fn task(attr: TokenStream, item: TokenStream) -> TokenStream {
 
         #[embassy_executor::task]
         #vis #sig {
-            // Unique descriptor: contains the (no linker section)
-            static #desc_ident: ::embassy_task_watchdog::TaskDesc = ::embassy_task_watchdog::TaskDesc {
-                name: ::core::stringify!(#fn_ident),
-            };
             // Convert runner ref into a per-task bound watchdog
-            let #wd_ident = #wd_ident.register_desc(&#desc_ident, #desc_id, #max_expr).await;
+            let #wd_ident = #wd_ident.register_desc(::core::stringify!(#fn_ident), #desc_id, #max_expr).await;
             {
                 // User body now sees #wd_ident: BoundWatchdog
                 #block

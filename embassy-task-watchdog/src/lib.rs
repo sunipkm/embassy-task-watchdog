@@ -150,8 +150,6 @@
 
 mod runtime;
 use embassy_time::Duration;
-#[doc(hidden)]
-pub use runtime::TaskDesc;
 
 pub use embassy_task_watchdog_macros::task;
 
