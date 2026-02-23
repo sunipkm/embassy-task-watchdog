@@ -22,4 +22,4 @@ target = "thumbv8m.main-none-eabihf" # RP2350x
 
 [env]
 DEFMT_LOG = "debug"
-EMBASSY_TASK_WATCHDOG_MAX_TASKS = "8"
+EMBASSY_TASK_WATCHDOG_MAX_TASKS = "2"

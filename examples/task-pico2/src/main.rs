@@ -22,6 +22,7 @@ async fn main(spawner: Spawner) {
     // Spawn tasks that will feed the watchdog
     spawner.must_spawn(main_task(watchdog));
     spawner.must_spawn(second_task(watchdog));
+    // spawner.must_spawn(third_task(watchdog));
     // Finally spawn the watchdog - this will start the hardware watchdog, and feed it
     // for as long as _all_ tasks are healthy.
     spawner.must_spawn(watchdog_task(watchdogtask));

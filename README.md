@@ -11,7 +11,7 @@ A robust, flexible watchdog management library for embedded systems that multipl
 - **⏱️ Configurable Timeouts**: Individual timeout durations for each registered task.
 - **🧪 `no_std` Compatible**: Designed for resource-constrained embedded environments without an operating system.
 - **🦀 Compile-time Total Tasks Check**: By default, the library supports 32 watchdog tasks. The limit can be changed
-  by setting the `EMBASSY_TASK_WATCHDOG_MAX_TASKS` variable either in your [`.cargo/config.toml`](examples/task-pico2/.cargo/config.toml), or by passing it as an environment variable to cargo, e.g. `EMBASSY_TASK_WATCHDOG_MAX_TASKS=8 cargo build`.
+  by setting the `EMBASSY_TASK_WATCHDOG_MAX_TASKS` variable either in your [`.cargo/config.toml`](examples/task-pico2/.cargo/config.toml), or by passing it as an environment variable to cargo, e.g. `EMBASSY_TASK_WATCHDOG_MAX_TASKS=8 cargo build`. The check is disabled in debug builds to prevent errors in IDEs, but exceeding the number of tasks will trigger a compiler error in the release build.
 
 ## 🚀 Quick Start
 
