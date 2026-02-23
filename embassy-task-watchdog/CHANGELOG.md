@@ -2,6 +2,9 @@
 ### v0.0.3
 - Fixed a bug where using the `create_watchdog!` macro would require an explicit import of embassy_time::Duration.
 - Removed `create_watchdog!` in favor of `create_watchdog_rp!` and `create_watchdog_stm32!` to avoid requiring hidden imports.
+- Updated documentation to bring more clarity to `BoundWatchdog`, `TaskWatchdog` and `WatchdogRunner`.
+- Removed public export of `WatchdogSetup`, which is now handled by the `create_watchdog_*!` macros.
+- Removed public export of `WatchdogConfig` struct fields.
 
 ### v0.0.2
 - Exposed the `BoundWatchdog` type for the users to be able to inspect reset reason and trigger a reset from within a task.

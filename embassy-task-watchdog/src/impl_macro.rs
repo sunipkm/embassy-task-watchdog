@@ -51,7 +51,12 @@ macro_rules! impl_watchdog {
 
             use super::TaskDesc;
 
-            /// A per-task bound handle that lets the task call `feed()` without IDs.
+            /// A per-task bound handle that is created from `TaskWatchdog` by the
+            /// [`crate::task`] macro. This handle is re-bound with the same name
+            /// as the original `TaskWatchdog` argument in the task function, 
+            /// and is used by the task to feed the watchdog, trigger a system reset,
+            /// or get the reset reason. This struct can be passed to different
+            /// functions called by the task.
             pub struct [<$Family BoundWatchdog>]<'a, const N: usize>
             where
                 'a: 'static,
@@ -94,6 +99,7 @@ macro_rules! impl_watchdog {
             }
 
             /// The WatchdogSetup for this family of watchdogs.  This is the struct you create with `new()` and pass to the `build()` function to get the WatchdogRunner and TaskWatchdog.
+            #[doc(hidden)]
             pub struct [<$Family WatchdogSetup>]<const N: usize = MAX_TASKS> {
                 inner: WatchdogOwner<N, [<$Family Watchdog>]>,
             }

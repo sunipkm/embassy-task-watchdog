@@ -213,16 +213,16 @@ pub enum ResetReason {
 }
 
 /// Configuration for the watchdog.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug)]
 pub struct WatchdogConfig {
     /// Timeout to start the hardware watchdog with.
-    pub hardware_timeout: Duration,
+    pub(crate) hardware_timeout: Duration,
 
     /// Interval at which to check if tasks have fed the watchdog.  Must be
     /// less than the hardware timeout, or the hardware watchdog will reset
     /// the system, before the task-watchdog has a chance to check tasks and
     /// feed it.
-    pub check_interval: Duration,
+    pub(crate) check_interval: Duration,
 }
 
 impl WatchdogConfig {
@@ -264,6 +264,10 @@ mod impl_macro;
 ///
 /// This module requires the `rp` feature flag to be enabled.
 ///
+/// The main entrypoint into this module is the [`create_watchdog_rp`] macro, which returns
+/// the [`embassy_rp::TaskWatchdog`] passed to the tasks, and the [`embassy_rp::WatchdogRunner`] passed to the
+/// [`embassy_rp::watchdog_run`] function.  See the documentation for that macro for more details and an example.
+///
 /// There is an equivalent `embassy_stm32` module for STM32, enabled by
 /// the `stm32` feature flag.
 #[cfg(feature = "rp")]
@@ -273,6 +277,10 @@ pub mod embassy_rp;
 /// embassy implementations.
 ///
 /// This module requires the `stm32` feature flag to be enabled.
+///
+/// The main entrypoint into this module is the [`create_watchdog_stm32`] macro, which returns
+/// the [`embassy_stm32::TaskWatchdog`] passed to the tasks, and the [`embassy_stm32::WatchdogRunner`] passed to the
+/// [`embassy_stm32::watchdog_run`] function.  See the documentation for that macro for more details and an example.
 ///
 /// There is an equivalent `embassy_rp` module for RP2040 and RP2350, enabled by
 /// the `rp` feature flag.
