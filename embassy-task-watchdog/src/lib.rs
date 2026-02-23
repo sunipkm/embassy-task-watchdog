@@ -278,7 +278,7 @@ pub mod embassy_rp;
 pub mod embassy_stm32;
 
 /// Initialize the static memory for the watchdog, and return the watchdog and
-/// the watchdog runner task. Pass the [`TaskWatchdog`](https://docs.rs/embassy-task-watchdog/latest/embassy_task_watchdog/struct.RpTaskWatchdog.html) to your tasks to be able to feed the watchdog. Pass the [`WatchdogRunner`](https://docs.rs/embassy-task-watchdog/latest/embassy_task_watchdog/struct.RpWatchdogRunner.html) to the [`watchdog_run`](https://docs.rs/embassy-task-watchdog/latest/embassy_task_watchdog/embassy_rp/fn.watchdog_run.html) function inside a spawned task to monitor the tasks and feed the hardware watchdog.
+/// the watchdog runner task. Pass the [`TaskWatchdog` struct](https://docs.rs/embassy-task-watchdog/latest/embassy_task_watchdog/embassy_rp/struct.RpTaskWatchdog.html) to your tasks to be able to feed the watchdog. Pass the [`WatchdogRunner` struct](https://docs.rs/embassy-task-watchdog/latest/embassy_task_watchdog/embassy_rp/struct.RpWatchdogRunner.html) to the [`watchdog_run` function](https://docs.rs/embassy-task-watchdog/latest/embassy_task_watchdog/embassy_rp/fn.watchdog_run.html) inside a spawned task to monitor the tasks and feed the hardware watchdog.
 /// ```rust
 /// # #![no_std]
 /// # #![no_main]
