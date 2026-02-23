@@ -1,4 +1,4 @@
-use super::{HardwareWatchdog, ResetReason, WatchdogConfig, info};
+use super::{HardwareWatchdog, ResetReason, WatchdogConfig, debug};
 use embassy_stm32::{Peri, peripherals::IWDG, wdg::IndependentWatchdog};
 use embassy_time::{Duration, Instant, Timer};
 
@@ -35,8 +35,8 @@ impl HardwareWatchdog for Stm32Watchdog {
         cortex_m::peripheral::SCB::sys_reset();
     }
 
-    fn reset_reason(&self) -> Option<ResetReason> {
-        None
+    fn reset_reason(&self) -> ResetReason {
+        ResetReason::Unknown
     }
 }
 

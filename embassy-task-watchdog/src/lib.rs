@@ -33,34 +33,23 @@
 //! turn, the hardware watchdog.
 //!
 //! ```rust
-//! #![no_std]
-//! #![no_main]
-//! use defmt_rtt as _;
-//! use embassy_executor::Spawner;
-//! use embassy_rp::config::Config;
-//! use embassy_task_watchdog::WatchdogConfig;
-//! use embassy_task_watchdog::embassy_rp::{RpWatchdogRunner, TaskWatchdog, Watchdog, watchdog_run};
-//! use embassy_time::{Duration, Timer};
-//! use panic_probe as _;
-//! use static_cell::StaticCell;
+//! # #![no_std]
+//! # #![no_main]
+//! # use defmt_rtt as _;
+//! # use embassy_executor::Spawner;
+//! # use embassy_rp::config::Config;
+//! # use embassy_task_watchdog::WatchdogConfig;
+//! # use embassy_task_watchdog::embassy_rp::{RpWatchdogRunner, TaskWatchdog, Watchdog, watchdog_run};
+//! # use embassy_time::{Duration, Timer};
+//! # use panic_probe as _;
+//! # use static_cell::StaticCell;
 //!
 //! #[embassy_executor::main]
 //! async fn main(spawner: Spawner) {
 //!     // Initialize the hardare peripherals
 //!     let p = embassy_rp::init(Config::default());
-//!     // Create a static to hold the task-watchdog object, so it has static
-//!     // lifetime and can be shared with tasks.
-//!     static WATCHDOG: StaticCell<Watchdog> = StaticCell::new();
-//!     // Set up watchdog configuration, with a 5s hardware watchdog timeout, and
-//!     // with the task watchdog checking tasks every second.
-//!     let config = WatchdogConfig {
-//!         hardware_timeout: Duration::from_millis(5000),
-//!         check_interval: Duration::from_millis(1000),
-//!     };
-//!     // Create the watchdog runner and store it in the static cell
-//!     let watchdog = Watchdog::new(p.WATCHDOG, config);
-//!     let (watchdog, watchdogtask) = WATCHDOG.init(watchdog).build();
-//!     // Register our tasks with the task-watchdog.  Each can have a different timeout.
+//!     // Create the watchdog runner, store it in a static cell, and get the watchdog and watchdog runner task.
+//!     let (watchdog, watchdogtask) = create_watchdog!(p.WATCHDOG, config);
 //!     // Spawn tasks that will feed the watchdog
 //!     spawner.must_spawn(main_task(watchdog));
 //!     spawner.must_spawn(second_task(watchdog));
@@ -152,12 +141,12 @@ pub use runtime::TaskDesc;
 
 pub use embassy_task_watchdog_macros::task;
 
-#[cfg(feature = "defmt")]
+#[cfg(feature = "defmt-messages")]
 #[allow(unused_imports)]
 use defmt::{debug, error, info, trace, warn};
 
 // A replacement for the defmt logging macros, when defmt is not provided
-#[cfg(not(feature = "defmt"))]
+#[cfg(not(feature = "defmt-messages"))]
 mod log_impl {
     #![allow(unused_macros)]
     #![allow(unused_imports)]
@@ -184,7 +173,7 @@ mod log_impl {
     pub(crate) use _trace as trace;
     pub(crate) use _warn as warn;
 }
-#[cfg(not(feature = "defmt"))]
+#[cfg(not(feature = "defmt-messages"))]
 use log_impl::*;
 
 pub(crate) use embassy_task_watchdog_numtasks::MAX_TASKS;
@@ -201,7 +190,7 @@ pub trait HardwareWatchdog {
     fn trigger_reset(&mut self) -> !;
 
     /// Get the reason for the last reset, if available.
-    fn reset_reason(&self) -> Option<ResetReason>;
+    fn reset_reason(&self) -> ResetReason;
 }
 
 /// Represents the reason for a system reset.
@@ -213,6 +202,12 @@ pub enum ResetReason {
 
     /// Reset was caused by watchdog timeout.
     TimedOut,
+
+    /// Reset was caused by an unknown reason.
+    Unknown,
+
+    /// No reset has occurred since the last time the reason was cleared.
+    None,
 }
 
 /// Configuration for the watchdog.
@@ -281,3 +276,74 @@ pub mod embassy_rp;
 /// the `rp` feature flag.
 #[cfg(feature = "stm32")]
 pub mod embassy_stm32;
+
+/// Initialize the static memory for the watchdog, and return the watchdog and
+/// the watchdog runner task. Pass the [`TaskWatchdog`](https://docs.rs/embassy-task-watchdog/latest/embassy_task_watchdog/struct.RpTaskWatchdog.html) to your tasks to be able to feed the watchdog. Pass the [`WatchdogRunner`](https://docs.rs/embassy-task-watchdog/latest/embassy_task_watchdog/struct.RpWatchdogRunner.html) to the [`watchdog_run`](https://docs.rs/embassy-task-watchdog/latest/embassy_task_watchdog/embassy_rp/fn.watchdog_run.html) function inside a spawned task to monitor the tasks and feed the hardware watchdog.
+/// ```rust
+/// # #![no_std]
+/// # #![no_main]
+/// # use defmt_rtt as _;
+/// # use embassy_executor::Spawner;
+/// # use embassy_rp::config::Config;
+/// # use embassy_task_watchdog::WatchdogConfig;
+/// # use embassy_task_watchdog::embassy_rp::{RpWatchdogRunner, TaskWatchdog, Watchdog, watchdog_run};
+/// # use embassy_time::{Duration, Timer};
+/// # use panic_probe as _;
+/// # use static_cell::StaticCell;
+///
+/// #[embassy_executor::main]
+/// async fn main(spawner: Spawner) {
+///     // Initialize the hardare peripherals
+///     let p = embassy_rp::init(Config::default());
+///     // Create the watchdog runner, store it in a static cell, and get the watchdog and watchdog runner task.
+///     let (watchdog, watchdogtask) = create_watchdog!(p.WATCHDOG, config);
+///     // Spawn tasks that will feed the watchdog
+///     spawner.must_spawn(main_task(watchdog));
+///     spawner.must_spawn(second_task(watchdog));
+///     // Finally spawn the watchdog - this will start the hardware watchdog, and feed it
+///     // for as long as _all_ tasks are healthy.
+///     spawner.must_spawn(watchdog_task(watchdogtask));
+/// }
+/// // Provide a simple embassy task for the watchdog
+/// #[embassy_executor::task]
+/// async fn watchdog_task(watchdog: RpWatchdogRunner) -> ! {
+///     watchdog_run(watchdog).await
+/// }
+/// // Implement your main task
+/// #[embassy_task_watchdog::task(timeout = Duration::from_millis(1500))]
+/// async fn main_task(watchdog: TaskWatchdog) -> ! {
+///     loop {
+///         // Feed the watchdog
+///         watchdog.feed().await;
+///         // Do some work
+///         Timer::after(Duration::from_millis(1000)).await;
+///     }
+/// }
+/// // Implement your second task
+/// #[embassy_task_watchdog::task(timeout = Duration::from_millis(2000))]
+/// async fn second_task(watchdog: TaskWatchdog) -> ! {
+///     loop {
+///         // Feed the watchdog
+///         watchdog.feed().await;
+///         // Do some work
+///         Timer::after(Duration::from_millis(2000)).await;
+///     }
+/// }
+/// ```
+#[macro_export]
+macro_rules! create_watchdog {
+    ($wdt: expr, $config: expr) => {{
+        // Create a static to hold the task-watchdog object, so it has static
+        // lifetime and can be shared with tasks.
+        static WATCHDOG: StaticCell<Watchdog> = StaticCell::new();
+        // Set up watchdog configuration, with a 5s hardware watchdog timeout, and
+        // with the task watchdog checking tasks every second.
+        let config = WatchdogConfig {
+            hardware_timeout: Duration::from_millis(5000),
+            check_interval: Duration::from_millis(1000),
+        };
+        // Create the watchdog runner and store it in the static cell
+        let watchdog = Watchdog::new($wdt, $config);
+        WATCHDOG.init(watchdog).build()
+    }};
+}

@@ -28,7 +28,7 @@ macro_rules! impl_watchdog {
             /// watchdog.  Using `spawner.must_spawn(watchdog_run(watchdog))` would
             /// likely be a good choice.
             pub async fn watchdog_run<const N: usize>(task: [<$Family WatchdogRunner>]<N>) -> ! {
-                info!("Watchdog runner started");
+                debug!("Watchdog runner started");
 
                 // Start the watchdog
                 task.runner.start().await;
@@ -52,8 +52,7 @@ macro_rules! impl_watchdog {
             use super::TaskDesc;
 
             /// A per-task bound handle that lets the task call `feed()` without IDs.
-            #[doc(hidden)]
-            pub struct [<$Family TaskWatchdogInner>]<'a, const N: usize>
+            pub struct [<$Family BoundWatchdog>]<'a, const N: usize>
             where
                 'a: 'static,
             {
@@ -61,30 +60,36 @@ macro_rules! impl_watchdog {
                 id: u32,
             }
 
-            impl<'a, const N: usize> [<$Family TaskWatchdogInner>]<'a, N> {
+            impl<'a, const N: usize> [<$Family BoundWatchdog>]<'a, N> {
                 #[inline(always)]
                 pub(crate) fn new(runner: &'a WatchdogOwner<N, [<$Family Watchdog>]>, id: u32) -> Self {
                     Self { runner, id }
                 }
 
                 #[inline(always)]
+                /// Feed the watchdog for this task.  This should be called periodically by the task to prevent the watchdog from resetting the system.
                 pub async fn feed(&self) {
                     self.runner.feed(self.id).await
                 }
 
                 #[inline(always)]
-                pub async fn deregister(&self) {
+                #[doc(hidden)]
+                /// Deregister this task from the watchdog.
+                /// This is executed when the task exits, and is not intended to be called by user code.
+                pub async fn _deregister(&self) {
                     self.runner.deregister_task(self.id).await
                 }
 
                 #[inline(always)]
-                pub async fn reset_reason(&self) -> Option<ResetReason> {
+                /// Get the reason for the last reset, if available.
+                pub async fn reset_reason(&self) -> ResetReason {
                     self.runner.reset_reason().await
                 }
 
                 #[inline(always)]
+                /// Trigger a reset immediately. This is useful for testing and for tasks that want to trigger a reset on their own.
                 pub async fn trigger_reset(&self) -> ! {
-                    self.runner.trigger_reset().await
+                    self.runner.trigger_reset(self.id).await
                 }
             }
 
@@ -117,9 +122,13 @@ macro_rules! impl_watchdog {
             }
 
             #[derive(Clone, Copy)]
-            /// A per-task bound handle that lets the task call `feed()` without IDs.
+            /// A per-task bound handle that is passed to the different tasks.
+            /// The [`crate::task`] macro uses this struct, when it is provided
+            /// by the user as the first argument, to register the task with
+            /// the watchdog and then re-binds the argument to a `BoundWatchdog`
+            /// for the task to feed the watchdog with.
             ///
-            /// Pass a static reference to this struct to the task, decorated by
+            /// Pass this struct to the task, decorated by
             /// [`crate::task`] as the first argument.
             pub struct [<$Family TaskWatchdog>]<const N: usize = MAX_TASKS> {
                 inner: &'static WatchdogOwner<N, [<$Family Watchdog>]>,
@@ -132,13 +141,20 @@ macro_rules! impl_watchdog {
                     self,
                     desc: &'static TaskDesc,
                     max_duration: Duration,
-                ) -> [<$Family TaskWatchdogInner>]<'static, N> {
+                ) -> [<$Family BoundWatchdog>]<'static, N> {
                     self.inner.register_task(desc.id, desc.name, max_duration).await;
-                    [<$Family TaskWatchdogInner>]::new(self.inner, desc.id)
+                    [<$Family BoundWatchdog>]::new(self.inner, desc.id)
+                }
+
+                #[inline(always)]
+                /// Get the reason for the last reset, if available.
+                pub async fn reset_reason(&self) -> ResetReason {
+                    self.inner.reset_reason().await
                 }
             }
 
             // Re-export for macro path convenience
+            pub use [<$Family BoundWatchdog>] as BoundWatchdog;
             pub use [<$Family TaskWatchdog>] as TaskWatchdog;
             pub use [<$Family WatchdogSetup>] as Watchdog;
 

@@ -1,4 +1,4 @@
-use super::{HardwareWatchdog, ResetReason, WatchdogConfig, info};
+use super::{HardwareWatchdog, ResetReason, WatchdogConfig, debug};
 use embassy_rp::{
     Peri, peripherals::WATCHDOG as RpWatchdogPeripheral, watchdog::Watchdog as RpWatchdogDevice,
 };
@@ -34,11 +34,14 @@ impl HardwareWatchdog for RpWatchdog {
         panic!("Triggering reset via watchdog failed");
     }
 
-    fn reset_reason(&self) -> Option<ResetReason> {
-        self.inner.reset_reason().map(|reason| match reason {
-            embassy_rp::watchdog::ResetReason::Forced => ResetReason::Forced,
-            embassy_rp::watchdog::ResetReason::TimedOut => ResetReason::TimedOut,
-        })
+    fn reset_reason(&self) -> ResetReason {
+        self.inner
+            .reset_reason()
+            .map(|reason| match reason {
+                embassy_rp::watchdog::ResetReason::Forced => ResetReason::Forced,
+                embassy_rp::watchdog::ResetReason::TimedOut => ResetReason::TimedOut,
+            })
+            .unwrap_or(ResetReason::None)
     }
 }
 

@@ -1,6 +1,6 @@
 [package]
 name = "embassy-task-watchdog"
-version = "0.0.1"
+version = "0.0.2"
 edition = "2024"
 authors = ["Sunip K. Mukherjee <sunipkmukherjee@gmail.com>"]
 description = "A robust, flexible watchdog management library for embedded systems that multiplexes multiple task watchdogs into a single hardware watchdog timer, preventing system lockups when tasks fail to respond"
@@ -55,8 +55,11 @@ defmt-embassy-rp = [
   "embassy-executor/executor-interrupt",
 ]
 
-# Use defmt logging
+# Allow internal states to be logged with defmt
 defmt = ["dep:defmt"]
+
+# Log internal operations with defmt messages
+defmt-messages = ["defmt"]
 
 # The following features are used internally - do not specify explicitly
 defmt-embassy = [
@@ -87,7 +90,7 @@ cortex-m = { version = "0.7", features = ["inline-asm"] }
 cortex-m-rt = { version = "0.7" }
 critical-section = { version = "1.2" }
 embassy-task-watchdog-numtasks = { version = "0.0.1", path = "../embassy-task-watchdog-numtasks" }
-embassy-task-watchdog-macros = { version = "0.0.1", path = "../embassy-task-watchdog-macros" }
+embassy-task-watchdog-macros = { version = "0.0.2", path = "../embassy-task-watchdog-macros" }
 panic-probe = { version = "1.0", optional = true }
 static_cell = "2.1"
 paste = { version = "1.0" }
@@ -105,6 +108,7 @@ features = [
   "dev-stm32c031c6",
   "defmt-embassy-rp",
   "defmt-embassy-stm32",
+  "defmt-messages",
   "defmt",
 ]
 targets = ["thumbv8m.main-none-eabihf"]

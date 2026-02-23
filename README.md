@@ -55,7 +55,7 @@ The library supports the embassy-executor asynchronous API.
 To use in your project, add the following line to your `Cargo.toml` file:
 
 ```toml
-embassy-task-watchdog = { version = "0.0.1", features = ["rp"] } # additionally, supports defmt for logging, stm32 for STM32 devices...
+embassy-task-watchdog = { version = "0.0.2", features = ["rp"] } # additionally, supports defmt for logging, stm32 for STM32 devices...
 ```
 
 ### 🛠️ Features
@@ -63,7 +63,8 @@ embassy-task-watchdog = { version = "0.0.1", features = ["rp"] } # additionally,
   - `defmt-embassy-rp`: [`defmt`](https://docs.rs/defmt/latest/defmt/) debugging for the Embassy executors.
 - `stm32`: For STM32 series of devices. Set up for the correct chip in your `Cargo.toml` by selecting the correct feature in the `embassy-stm32` dependency.
   - `defmt-embassy-stm32`: `defmt` debugging for Embassy executors.
-- `defmt`: Debugging for the `embassy-task-watchdog` crate.
+- `defmt`: Enable `defmt::Format` for the `embassy-task-watchdog` crate.
+- `defmg-messages`: Enable log messages from the `embassy-task-watchdog` crate.
 
 ### 🧠 Core Concepts
 
@@ -79,7 +80,7 @@ Tasks feed the watchdog asynchronously, powered by Embassy:
 
 ```Rust
 // Setup
-let (watchdog, watchdogtask) = Watchdog::new(hw_watchdog, config).build();
+let (watchdog, watchdogtask) = create_watchdog!(hw_watchdog, config);
 
 // Spawn the watchdog task itself
 spawner.spawn(watchdog_task(watchdogtask)).unwrap();

@@ -14,6 +14,7 @@ struct TaskArgs {
     timeout: Expr,
 }
 
+#[cfg(not(debug_assertions))]
 use embassy_task_watchdog_numtasks::MAX_TASKS;
 static TASK_ID: AtomicU32 = AtomicU32::new(0);
 
@@ -74,7 +75,10 @@ fn first_param_ident(fn_item: &ItemFn) -> Result<Ident> {
 }
 
 #[proc_macro_attribute]
-/// The [`task`] decorator macro is used in the place of [`embassy_executor::task`] to create an async task that can be monitored by the task-watchdog.  It is used like this, for a task that feeds the watchdog every 1000ms and is considered stalled if it goes more than 2000ms without feeding:
+/// This decorator macro replaces [`embassy_executor::task`](https://docs.embassy.dev/embassy-executor/git/cortex-m/attr.task.html) 
+/// to create an async task that can be monitored by the task-watchdog.  Example usage for a task 
+/// is shown below, that feeds the watchdog every 1000ms and is considered stalled if it goes more 
+/// than 2000ms without feeding:
 /// ```rust,no_run
 /// # #![no_std]
 /// # #![no_main]
@@ -88,7 +92,17 @@ fn first_param_ident(fn_item: &ItemFn) -> Result<Ident> {
 ///     }
 /// }
 /// ```
-/// The first argument to the task must be a static reference to the [`embassy_task_watchdog::TaskWatchdog`] for the task to register itself with. The macro will convert this into a per-task bound watchdog that the user can feed to indicate the task is still alive. The `timeout` argument specifies how long the watchdog should wait for a feed before considering the task to be stalled. This is required to be able to detect stalls, and should be set to a value that is longer than the longest expected time between feeds in the task.
+/// The first argument to the task must be a [`embassy_task_watchdog::TaskWatchdog`](https://docs.rs/embassy-task-watchdog/latest/embassy_task_watchdog/embassy_rp/struct.RpTaskWatchdog.html) 
+/// for the task to register itself with. The macro will convert this into a per-task bound watchdog
+///  [`embassy_task_watchdog::BoundWatchdog`](https://docs.rs/embassy-task-watchdog/latest/embassy_task_watchdog/embassy_rp/struct.RpBoundWatchdog.html) 
+/// that the user can feed to indicate the task is still alive. The `timeout` argument specifies how 
+/// long the watchdog should wait for a feed before considering the task to be stalled. This value 
+/// should be set to be longer than the longest expected time between feeds in the task.
+/// 
+/// # Caution
+/// In release builds, the macro checks that the number of tasks does not exceed the configured limit
+/// (defaults to 32), and will produce a compile error if more tasks are defined. In debug builds, this
+/// check is skipped to allow for continuous integration testing without needing to adjust the limit.
 pub fn task(attr: TokenStream, item: TokenStream) -> TokenStream {
     let args = parse_macro_input!(attr as TaskArgs);
     let f = parse_macro_input!(item as ItemFn);
@@ -108,6 +122,7 @@ pub fn task(attr: TokenStream, item: TokenStream) -> TokenStream {
     };
 
     let desc_id = TASK_ID.fetch_add(1, Ordering::SeqCst);
+    #[cfg(not(debug_assertions))]
     if desc_id >= MAX_TASKS as _ {
         return syn::Error::new(
             f.sig.span(),
@@ -147,7 +162,7 @@ pub fn task(attr: TokenStream, item: TokenStream) -> TokenStream {
                 #block
             }
             #[allow(unreachable_code)]
-            #wd_ident.deregister().await;
+            #wd_ident._deregister().await;
         }
     };
 

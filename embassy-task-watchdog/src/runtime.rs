@@ -163,19 +163,32 @@ impl<W: HardwareWatchdog, const N: usize> WatchdogContainer<N, W> {
         // task
         if !starved {
             self.hw_watchdog.feed();
+            debug!("Hardware watchdog fed");
         }
 
         starved
     }
 
     /// Trigger a system reset.
-    pub(crate) fn trigger_reset(&mut self) -> ! {
-        warn!("Triggering watchdog reset");
+    pub(crate) fn trigger_reset(&mut self, id: u32) -> ! {
+        #[allow(unused)]
+        if let Some(task) = self
+            .tasks
+            .get_mut(id as usize)
+            .and_then(|slot| slot.as_mut())
+        {
+            warn!("Task {} ({}) is triggering a watchdog reset", id, task.name);
+        } else {
+            error!(
+                "Unknown task {} attempted to trigger a watchdog reset, resetting",
+                id
+            );
+        }
         self.hw_watchdog.trigger_reset()
     }
 
     /// Get the reason for the last reset.
-    pub(crate) fn reset_reason(&self) -> Option<ResetReason> {
+    pub(crate) fn reset_reason(&self) -> ResetReason {
         self.hw_watchdog.reset_reason()
     }
 }
@@ -224,12 +237,12 @@ impl<const N: usize, W: HardwareWatchdog> WatchdogOwner<N, W> {
     }
 
     /// Trigger a system reset.
-    pub(crate) async fn trigger_reset(&self) -> ! {
-        self.watchdog.lock().await.borrow_mut().trigger_reset()
+    pub(crate) async fn trigger_reset(&self, id: u32) -> ! {
+        self.watchdog.lock().await.borrow_mut().trigger_reset(id)
     }
 
     /// Get the last reset reason.
-    pub(crate) async fn reset_reason(&self) -> Option<ResetReason> {
+    pub(crate) async fn reset_reason(&self) -> ResetReason {
         self.watchdog.lock().await.borrow().reset_reason()
     }
 
