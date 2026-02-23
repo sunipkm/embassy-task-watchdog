@@ -1,6 +1,6 @@
 [package]
 name = "task-stm32"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2024"
 
 [dependencies]
@@ -35,7 +35,7 @@ embassy-time = { version = "0.5", features = [
 embedded-hal-1 = { package = "embedded-hal", version = "1.0" }
 static_cell = "2"
 portable-atomic = { version = "1.5", features = ["unsafe-assume-single-core"] }
-embassy-task-watchdog = { version = "0.0.2", path = "../../embassy-task-watchdog", features = [
+embassy-task-watchdog = { version = "0.0.3", path = "../../embassy-task-watchdog", features = [
     "defmt",
     "stm32",
 ] }

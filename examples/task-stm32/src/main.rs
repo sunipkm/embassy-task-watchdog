@@ -4,8 +4,8 @@
 use defmt::info;
 use embassy_executor::Spawner;
 use embassy_task_watchdog::{
-    WatchdogConfig, create_watchdog,
-    embassy_stm32::{Stm32WatchdogRunner, TaskWatchdog, Watchdog, watchdog_run},
+    WatchdogConfig, create_watchdog_stm32,
+    embassy_stm32::{TaskWatchdog, WatchdogRunner, watchdog_run},
 };
 use embassy_time::{Duration, Timer};
 use static_cell::StaticCell;
@@ -18,7 +18,7 @@ async fn main(spawner: Spawner) {
     // Create the task watchdog and the watchdog runner.
     // Tasks feed the task watchdog to indicate life.
     // The watchdog runner feeds the hardware watchdog only if all tasks are alive.
-    let (watchdog, watchdogtask) = create_watchdog!(p.IWDG, WatchdogConfig::default());
+    let (watchdog, watchdogtask) = create_watchdog_stm32!(p.IWDG, WatchdogConfig::default());
     // Spawn tasks that will feed the watchdog
     spawner.must_spawn(main_task(watchdog));
     spawner.must_spawn(second_task(watchdog));
@@ -28,7 +28,7 @@ async fn main(spawner: Spawner) {
 }
 // Provide a simple embassy task for the watchdog
 #[embassy_executor::task]
-async fn watchdog_task(watchdog: Stm32WatchdogRunner) -> ! {
+async fn watchdog_task(watchdog: WatchdogRunner) -> ! {
     watchdog_run(watchdog).await
 }
 // Implement your main task

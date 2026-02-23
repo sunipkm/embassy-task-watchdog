@@ -79,11 +79,12 @@ embassy-task-watchdog = { version = "0.0.2", features = ["rp"] } # additionally,
 Tasks feed the watchdog asynchronously, powered by Embassy:
 
 ```Rust
-// Setup
-let (watchdog, watchdogtask) = create_watchdog!(hw_watchdog, config);
+// Setup, for pico devices
+// Change to create_watchdog_stm32 for STM32 devices
+let (watchdog, watchdogrunner) = create_watchdog_rp!(hw_watchdog, config);
 
 // Spawn the watchdog task itself
-spawner.spawn(watchdog_task(watchdogtask)).unwrap();
+spawner.spawn(watchdog_task(watchdogrunner)).unwrap();
 
 // In your application tasks
 #[embassy_task_watchdog::task(timeout = Duration::from_millis(2000))]

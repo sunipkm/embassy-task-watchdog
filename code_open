@@ -1,3 +1,31 @@
-code embassy-task-watchdog-macros
-code embassy-task-watchdog
-code examples/task-pico2
+#!/bin/bash
+examples=0
+repos=0
+while getopts "er" opt; do
+    case $opt in
+        e) examples=1 ;;
+        r) repos=1 ;;
+        *) echo "Usage: $0 [-e]xamples [-r]epositories" >&2
+        exit 1 ;;
+    esac
+done
+
+if [ $examples -eq 0 ] && [ $repos -eq 0 ]; then
+    echo "No options provided. Use -e for examples and -r for repositories."
+    exit 1
+fi
+
+if [ $examples -eq 1 ]; then
+    echo "Opening examples..."
+    # Add commands to open examples here
+    code examples/task-pico
+    code examples/task-pico2
+    code examples/task-stm32
+fi
+
+if [ $repos -eq 1 ]; then
+    echo "Opening repositories..."
+    # Add commands to open repositories here
+    code embassy-task-watchdog-macros
+    code embassy-task-watchdog
+fi

@@ -4,8 +4,8 @@ use defmt_rtt as _;
 use embassy_executor::Spawner;
 use embassy_rp::config::Config;
 use embassy_task_watchdog::{
-    WatchdogConfig, create_watchdog,
-    embassy_rp::{RpWatchdogRunner, TaskWatchdog, Watchdog, watchdog_run},
+    WatchdogConfig, create_watchdog_rp,
+    embassy_rp::{TaskWatchdog, WatchdogRunner, watchdog_run},
 };
 use embassy_time::{Duration, Timer};
 use panic_probe as _;
@@ -18,7 +18,7 @@ async fn main(spawner: Spawner) {
     // Create the task watchdog and the watchdog runner.
     // Tasks feed the task watchdog to indicate life.
     // The watchdog runner feeds the hardware watchdog only if all tasks are alive.
-    let (watchdog, watchdogtask) = create_watchdog!(p.WATCHDOG, WatchdogConfig::default());
+    let (watchdog, watchdogtask) = create_watchdog_rp!(p.WATCHDOG, WatchdogConfig::default());
     // Spawn tasks that will feed the watchdog
     spawner.must_spawn(main_task(watchdog));
     spawner.must_spawn(second_task(watchdog));
@@ -28,7 +28,7 @@ async fn main(spawner: Spawner) {
 }
 // Provide a simple embassy task for the watchdog
 #[embassy_executor::task]
-async fn watchdog_task(watchdog: RpWatchdogRunner) -> ! {
+async fn watchdog_task(watchdog: WatchdogRunner) -> ! {
     watchdog_run(watchdog).await
 }
 // Implement your main task

@@ -157,6 +157,7 @@ macro_rules! impl_watchdog {
             pub use [<$Family BoundWatchdog>] as BoundWatchdog;
             pub use [<$Family TaskWatchdog>] as TaskWatchdog;
             pub use [<$Family WatchdogSetup>] as Watchdog;
+            pub use [<$Family WatchdogRunner>] as WatchdogRunner;
 
         }
     }
