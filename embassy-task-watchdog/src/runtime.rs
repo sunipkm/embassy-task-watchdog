@@ -17,26 +17,37 @@ pub(crate) struct Task {
 
     /// Maximum duration between feeds.
     max_duration: embassy_time::Duration,
+
+    /// Retries before the task is considered starved
+    retries: u8,
+
+    /// Available tries
+    available: u8,
 }
 
 impl Task {
     /// Creates a new Task object for registration with the watchdog.
-    pub fn new(name: &'static str, max_duration: embassy_time::Duration) -> Self {
+    pub fn new(name: &'static str, max_duration: embassy_time::Duration, retries: u8) -> Self {
         Self {
             name,
             last_feed: embassy_time::Instant::now(), // Initialize to the epoch; will be fed immediately on watchdog start.
             max_duration,
+            retries,
+            available: retries,
         }
     }
 
     /// Feed the task to indicate it's still active.
     fn feed(&mut self) {
         self.last_feed = embassy_time::Instant::now();
+        self.available = self.retries;
     }
 
     /// Check if this task has starved the watchdog.
-    fn is_starved(&self) -> bool {
-        embassy_time::Instant::now().duration_since(self.last_feed) > self.max_duration
+    fn is_starved(&mut self) -> bool {
+        let res = embassy_time::Instant::now().duration_since(self.last_feed) > self.max_duration && self.available == 0;
+        self.available = self.available.saturating_sub(1);
+        res
     }
 }
 
@@ -88,6 +99,7 @@ impl<W: HardwareWatchdog> WatchdogContainer<W> {
         id: u32,
         name: &'static str,
         max_duration: embassy_time::Duration,
+        retries: u8,
     ) {
         // Find an empty slot
         if id >= MAX_TASKS as u32 {
@@ -95,7 +107,7 @@ impl<W: HardwareWatchdog> WatchdogContainer<W> {
         }
         // SAFETY: We have already checked that the ID is within bounds, so this is safe.
         let slot = unsafe { self.tasks.get_unchecked_mut(id as usize) };
-        *slot = Some(Task::new(name, max_duration));
+        *slot = Some(Task::new(name, max_duration, retries));
         debug!("Registered task: {} ({})", id, name);
     }
 
@@ -206,12 +218,13 @@ impl<W: HardwareWatchdog> WatchdogOwner<W> {
         id: u32,
         name: &'static str,
         max_duration: embassy_time::Duration,
+        retries: u8,
     ) {
         self.watchdog
             .lock()
             .await
             .borrow_mut()
-            .register_task(id, name, max_duration);
+            .register_task(id, name, max_duration, retries);
     }
 
     /// Deregister a task with the watchdog.

@@ -72,6 +72,7 @@ macro_rules! impl_watchdog {
 
                 #[inline(always)]
                 /// Feed the watchdog for this task.  This should be called periodically by the task to prevent the watchdog from resetting the system.
+                /// Feeding the watchdog resets the `retries` count for the task.
                 pub async fn feed(&self) {
                     self.runner.feed(self.id).await
                 }
@@ -147,8 +148,9 @@ macro_rules! impl_watchdog {
                     name: &'static str,
                     id: u32,
                     max_duration: Duration,
+                    retries: u8,
                 ) -> [<$Family BoundWatchdog>]<'static> {
-                    self.inner.register_task(id, name, max_duration).await;
+                    self.inner.register_task(id, name, max_duration, retries).await;
                     [<$Family BoundWatchdog>]::new(self.inner, id)
                 }
 

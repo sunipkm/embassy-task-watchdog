@@ -14,6 +14,8 @@
     watchdog. It is recommended to set `fallible = true` in this scenario.
   - Setting `fallible` to `true` relaxes the requirement that the tasks never
     return (`-> !`). It is recommended to be used in conjunction with `keep`.
+  - Setting `retries` to some value will defer the stall check that many times
+    before allowing the watchdog to time out.
 - Remove forced task deregistration at the end of the user task function at the
   end of the macro expansion.
 

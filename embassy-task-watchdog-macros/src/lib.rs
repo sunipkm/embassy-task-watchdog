@@ -14,6 +14,7 @@ use syn::{
 struct TaskArgs {
     docs: Vec<syn::Attribute>,
     timeout: Expr,
+    retries: Expr,
     keep: bool,
     setup: bool,
     fallible: bool,
@@ -37,6 +38,7 @@ struct ParseResult {
 impl Parse for TaskArgs {
     fn parse(input: ParseStream) -> Result<Self> {
         let mut timeout: Option<Expr> = None;
+        let mut retries: Option<Expr> = None;
         let mut keep = true;
         let mut setup = false;
         let mut fallible = false;
@@ -53,6 +55,7 @@ impl Parse for TaskArgs {
             let key = nv.path.get_ident().map(|i| i.to_string());
             match key.as_deref() {
                 Some("timeout") => timeout = Some(nv.value),
+                Some("retries") => retries = Some(nv.value),
                 Some("keep") => {
                     keep = check_boolean_expr(&nv.value, "keep")?;
                 }
@@ -66,14 +69,14 @@ impl Parse for TaskArgs {
                     return Err(syn::Error::new(
                         nv.path.span(),
                         format!(
-                            "unknown argument `{other}` (supported: timeout, keep, setup, fallible)"
+                            "unknown argument `{other}` (supported: timeout, retries, keep, setup, fallible)"
                         ),
                     ));
                 }
                 None => {
                     return Err(syn::Error::new(
                         nv.path.span(),
-                        "expected identifier key (supported: timeout)",
+                        "expected identifier key (supported: timeout, retries, keep, setup, fallible)",
                     ));
                 }
             }
@@ -87,6 +90,12 @@ impl Parse for TaskArgs {
             keep,
             setup,
             fallible,
+            retries: retries.unwrap_or_else(|| {
+                Expr::Lit(syn::ExprLit {
+                    attrs: Vec::new(),
+                    lit: syn::Lit::Int(syn::LitInt::new("0", input.span())),
+                })
+            }),
         })
     }
 }
@@ -132,6 +141,26 @@ fn first_param_ident(fn_item: &ItemFn) -> Result<Ident> {
 ///   return normally. This is useful for tasks that may need to exit on their own after some condition is met, rather than running
 ///   indefinitely. A fallible task will still be monitored by the watchdog until it finishes, and crash the program. Set
 ///   `keep = false` for a fallible task to deregister itself from the watchdog when it finishes.
+/// - `retries`: The number of times to retry feeding the watchdog before considering the task stalled (*defaults to `0`*).
+///   This is useful for allowing some number of missed feeds before triggering a stall, which can help reduce false positives
+///   in cases where occasional delays are expected (e.g. `retries = 3` will allow 3 missed feeds before considering the task stalled).
+///   By default, the watchdog will consider the task stalled
+///   immediately upon a missed feed.
+///
+/// # Function Requirements
+/// - The function must be `async` and return `!` (never), unless `fallible = true` is set, in which case it can return normally.
+/// - The function must have at least one parameter of type [`embassy_task_watchdog::TaskWatchdog`](https://docs.rs/embassy-task-watchdog/latest/embassy_task_watchdog/embassy_rp/struct.RpTaskWatchdog.html),
+///   and the first parameter must be an identifier pattern (e.g. `wd: TaskWatchdog`).
+///   The macro will convert this into a per-task bound watchdog ([`embassy_task_watchdog::BoundWatchdog`](https://docs.rs/embassy-task-watchdog/latest/embassy_task_watchdog/embassy_rp/struct.RpBoundWatchdog.html))
+///   that the user can feed to indicate the task is still alive.
+/// - If `setup = true` is set, the function must contain at least one loop statement (e.g. `loop { ... }`) for the macro to split
+///   the setup and consume parts. Any code before the first loop will be considered setup code that runs once. The setup code should
+///   not be in a block (surrounded by `{}`).
+/// - If `keep = false` is set, the function should not be fallible, since it will deregister itself from the watchdog when it finishes,
+///   and won't be around to feed it anymore - which will lead to timing out the watchdog.
+///
+/// # Examples
+/// ### Simple Example
 ///
 /// Example usage for a task
 /// is shown below, that feeds the watchdog every 1000ms and is considered stalled if it goes more
@@ -140,25 +169,19 @@ fn first_param_ident(fn_item: &ItemFn) -> Result<Ident> {
 /// # #![no_std]
 /// # #![no_main]
 /// # use embassy_time::{Duration, Timer};
-/// #[task(timeout = Duration::from_millis(2000))]
+/// #[task(timeout = Duration::from_secs(2))]
 /// async fn my_task(watchdog: TaskWatchdog) {
 ///     loop {
 ///       watchdog.feed().await; // Feed the watchdog to indicate the task is still alive
 ///        // Do some work
-///        Timer::after(Duration::from_millis(1000)).await;
+///        Timer::after(Duration::from_secs(1)).await;
 ///     }
 /// }
 /// ```
-/// The first argument to the task must be a [`embassy_task_watchdog::TaskWatchdog`](https://docs.rs/embassy-task-watchdog/latest/embassy_task_watchdog/embassy_rp/struct.RpTaskWatchdog.html)
-/// for the task to register itself with. The macro will convert this into a per-task bound watchdog
-///  [`embassy_task_watchdog::BoundWatchdog`](https://docs.rs/embassy-task-watchdog/latest/embassy_task_watchdog/embassy_rp/struct.RpBoundWatchdog.html)
-/// that the user can feed to indicate the task is still alive. The `timeout` argument specifies how
-/// long the watchdog should wait for a feed before considering the task to be stalled. This value
-/// should be set to be longer than the longest expected time between feeds in the task.
+/// ### Setup Mode Example
 ///
-/// Example usage for a task with setup code is shown below:
 /// ```rust,no_run
-/// #[task(timeout = Duration::from_millis(2000), setup = true)]
+/// #[task(timeout = Duration::from_secs(2), setup = true)]
 /// async fn my_task_with_setup(watchdog: TaskWatchdog) {
 ///     // Some setup code that runs once
 ///     do_setup().await;
@@ -169,9 +192,10 @@ fn first_param_ident(fn_item: &ItemFn) -> Result<Ident> {
 /// }
 /// ```
 ///
-/// Example usage for a fallible task is shown below:
+/// ### Fallible Task Example
+///
 /// ```rust,no_run
-/// #[task(timeout = Duration::from_millis(2000), fallible = true, keep = false)]
+/// #[task(timeout = Duration::from_secs(2), fallible = true, keep = false)]
 /// async fn my_fallible_task(watchdog: TaskWatchdog) {
 ///     loop {
 ///         watchdog.feed().await; // Feed the watchdog to indicate the task is still alive
@@ -187,7 +211,9 @@ fn first_param_ident(fn_item: &ItemFn) -> Result<Ident> {
 ///
 /// # Caution
 /// In release builds, the macro checks that the number of tasks does not exceed the configured limit
-/// (defaults to 32), and will produce a compile error if more tasks are defined. In debug builds, this
+/// (*defaults to 32*, refer to
+/// [`embassy_task_watchdog_numtasks::MAX_TASKS`](https://docs.rs/embassy-task-watchdog-numtasks/latest/embassy_task_watchdog_numtasks/constant.MAX_TASKS.html)),
+/// and will produce a compile error if more tasks are defined. In debug builds, this
 /// check is skipped to allow for continuous integration testing without needing to adjust the limit.
 pub fn task(attr: TokenStream, item: TokenStream) -> TokenStream {
     // Parse the input attributes into a syntax tree, as TaskArgs
@@ -212,20 +238,23 @@ pub fn task(attr: TokenStream, item: TokenStream) -> TokenStream {
     } else {
         quote! {}
     };
+    let retries = args.retries;
 
     let body = if let Some((setup, consume)) = broken {
         quote! {
+            // info!("[{}] starting task, retries {:?}", ::core::stringify!(#fn_ident), #retries);
             // Setup code before the loop, which is not monitored by the watchdog
             #(#setup)*
             // Register the watchdog after the setup code finishes
-            let #wd_ident = #wd_ident._register_desc(::core::stringify!(#fn_ident), #desc_id, #max_expr).await;
+            let #wd_ident = #wd_ident._register_desc(::core::stringify!(#fn_ident), #desc_id, #max_expr, #retries).await;
             // Run the loop code, which has access to the bound watchdog for feeding, and is monitored for stalls
             #(#consume)*
         }
     } else {
         quote! {
             // Convert runner ref into a per-task bound watchdog
-            let #wd_ident = #wd_ident._register_desc(::core::stringify!(#fn_ident), #desc_id, #max_expr).await;
+            // info!("[{}] starting task, retries {:?}", ::core::stringify!(#fn_ident), #retries);
+            let #wd_ident = #wd_ident._register_desc(::core::stringify!(#fn_ident), #desc_id, #max_expr, #retries).await;
             {
                 // Run user code
                 #block

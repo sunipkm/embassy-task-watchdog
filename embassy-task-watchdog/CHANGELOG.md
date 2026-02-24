@@ -5,11 +5,12 @@
 - Removed `embassy-task-watchdog::Error`, since it was never propagated and running out of task slots was relegated
   to a compile time error.
 - Leverage the watchdog scratch registers in RP2040/RP235xy to indicate which task caused reset.
-- Bumped `embassy-task-watchdog-macros` to `v0.0.3`.
+- Bumped `embassy-task-watchdog-macros` to `v0.0.3`, which brings extended functionality to the crate.
 - Removed internal `TaskDesc` struct.
 - Removed separate `create_watchdog_*` macros, and consolidated the functionality into a single `create_watchdog` macro.
 - `create_watchdog` uses `static_cell::StaticCell` in its own context.
 - Marking components activated by features in documentation.
+- Added the ability to defer task stall by a set number of checks.
 
 ### v0.0.4
 
