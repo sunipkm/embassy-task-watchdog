@@ -45,7 +45,8 @@ impl Task {
 
     /// Check if this task has starved the watchdog.
     fn is_starved(&mut self) -> bool {
-        let res = embassy_time::Instant::now().duration_since(self.last_feed) > self.max_duration && self.available == 0;
+        let res = embassy_time::Instant::now().duration_since(self.last_feed) > self.max_duration
+            && self.available == 0;
         self.available = self.available.saturating_sub(1);
         res
     }

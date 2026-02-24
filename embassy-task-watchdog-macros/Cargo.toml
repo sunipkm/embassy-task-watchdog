@@ -1,6 +1,6 @@
 [package]
 name = "embassy-task-watchdog-macros"
-version = "0.0.2"
+version = "0.0.3"
 edition = "2024"
 authors = ["Sunip K. Mukherjee <sunipkmukherjee@gmail.com>"]
 description = "Procedural macros for the [`embassy_task_watchdog`] crate."
