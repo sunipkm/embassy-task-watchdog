@@ -21,12 +21,13 @@ embassy-rp = { version = "0.9", features = [
     "unstable-pac",
     "time-driver",
     "critical-section-impl",
-    "rp235xa",
+    "rp235xb",
 ] }
 
 embassy-task-watchdog = { version = "0.0.5", path = "../../embassy-task-watchdog", features = [
     "rp",
     "defmt",
+    "defmt-messages",
 ] }
 defmt = { version = "1.0", default-features = false }
 defmt-rtt = "1.1"
@@ -38,3 +39,4 @@ critical-section = "1.2"
 panic-probe = { version = "1.0", features = ["print-defmt"] }
 static_cell = "2.1"
 portable-atomic = { version = "1.11", features = ["critical-section"] }
+heapless = { version = "0.9", default-features = false, features = ["defmt"] }

@@ -46,7 +46,7 @@
 //! # use embassy_rp::config::Config;
 //! # use embassy_task_watchdog::{
 //! #     WatchdogConfig, create_watchdog,
-//! #     embassy_rp::{TaskWatchdog, WatchdogRunner, watchdog_run},
+//! #     embassy_rp::{TaskWatchdog, WatchdogRunner},
 //! # };
 //! # use embassy_time::{Duration, Timer};
 //! # use panic_probe as _;
@@ -68,7 +68,7 @@
 //! // Provide a simple embassy task for the watchdog
 //! #[embassy_executor::task]
 //! async fn watchdog_task(watchdog: WatchdogRunner) -> ! {
-//!     watchdog_run(watchdog).await
+//!     watchdog.run().await
 //! }
 //! // Implement your main task
 //! #[embassy_task_watchdog::task(timeout = Duration::from_millis(1500))]
@@ -199,18 +199,18 @@ pub trait HardwareWatchdog {
     fn feed(&mut self);
 
     /// Trigger a hardware reset.
-    fn trigger_reset(&mut self) -> !;
+    fn trigger_reset(&mut self, reason: Option<heapless::String<32>>) -> !;
 
     /// Get the reason for the last reset, if available.
-    fn reset_reason(&self) -> ResetReason;
+    fn reset_reason(&mut self) -> ResetReason;
 }
 
 /// Represents the reason for a system reset.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum ResetReason {
     /// Reset was forced by software.
-    Forced,
+    Forced(heapless::String<32>),
 
     /// Reset was caused by watchdog timeout.
     TimedOut,
@@ -262,12 +262,6 @@ impl Default for WatchdogConfig {
     }
 }
 
-/// Errors that can occur when interacting with the watchdog.
-pub enum Error {
-    /// No slots available to register a task.
-    NoSlotsAvailable,
-}
-
 mod impl_macro;
 
 /// An async implementation of embassy-task-watchdog for use with the RP2040 and RP2350
@@ -276,8 +270,10 @@ mod impl_macro;
 /// This module requires the `rp` feature flag to be enabled.
 ///
 /// The main entrypoint into this module is the [`create_watchdog`] macro, which returns
-/// the [`embassy_rp::TaskWatchdog`] passed to the tasks, and the [`embassy_rp::WatchdogRunner`] passed to the
-/// [`embassy_rp::watchdog_run`] function.  See the documentation for that macro for more details and an example.
+/// the [`embassy_rp::TaskWatchdog`] passed to the tasks, and the [`embassy_rp::WatchdogRunner`].
+/// The [`embassy_rp::WatchdogRunner`] is awaited in a spawned [`embassy_executor::task`] to
+/// monitor the tasks and feed the hardware watchdog.
+/// See the documentation for that macro for more details and an example.
 ///
 /// There is an equivalent `embassy_stm32` module for STM32, enabled by
 /// the `stm32` feature flag.
@@ -291,8 +287,10 @@ pub mod embassy_rp;
 /// This module requires the `stm32` feature flag to be enabled.
 ///
 /// The main entrypoint into this module is the [`create_watchdog`] macro, which returns
-/// the [`embassy_stm32::TaskWatchdog`] passed to the tasks, and the [`embassy_stm32::WatchdogRunner`] passed to the
-/// [`embassy_stm32::watchdog_run`] function.  See the documentation for that macro for more details and an example.
+/// the [`embassy_stm32::TaskWatchdog`] passed to the tasks, and the [`embassy_stm32::WatchdogRunner`].
+/// The [`embassy_stm32::WatchdogRunner`] is awaited in a spawned [`embassy_executor::task`] to
+/// monitor the tasks and feed the hardware watchdog.
+/// See the documentation for that macro for more details and an example.
 ///
 /// There is an equivalent `embassy_rp` module for RP2040 and RP2350, enabled by
 /// the `rp` feature flag.
@@ -302,9 +300,8 @@ pub mod embassy_stm32;
 
 /// Initialize the static memory for the watchdog, and return the watchdog and
 /// the watchdog runner task. Pass the [`TaskWatchdog` struct](https://docs.rs/embassy-task-watchdog/latest/embassy_task_watchdog/embassy_rp/struct.RpTaskWatchdog.html)
-/// to your tasks to be able to feed the watchdog. Pass the
-/// [`WatchdogRunner` struct](https://docs.rs/embassy-task-watchdog/latest/embassy_task_watchdog/embassy_rp/struct.RpWatchdogRunner.html)
-/// to the [`watchdog_run` function](https://docs.rs/embassy-task-watchdog/latest/embassy_task_watchdog/embassy_rp/fn.watchdog_run.html)
+/// to your tasks to be able to feed the watchdog. Execute
+/// [`WatchdogRunner::run` function](https://docs.rs/embassy-task-watchdog/latest/embassy_task_watchdog/embassy_rp/struct.RpWatchdogRunner.html)
 /// inside a spawned task to monitor the tasks and feed the hardware watchdog.
 #[cfg(all(feature = "rp", not(feature = "stm32")))]
 #[macro_export]
@@ -324,9 +321,8 @@ macro_rules! create_watchdog {
 #[cfg(all(feature = "stm32", not(feature = "rp")))]
 /// Initialize the static memory for the watchdog, and return the watchdog and
 /// the watchdog runner task. Pass the [`TaskWatchdog` struct](https://docs.rs/embassy-task-watchdog/latest/embassy_task_watchdog/embassy_stm32/struct.Stm32TaskWatchdog.html)
-/// to your tasks to be able to feed the watchdog. Pass the
-/// [`WatchdogRunner` struct](https://docs.rs/embassy-task-watchdog/latest/embassy_task_watchdog/embassy_stm32/struct.Stm32WatchdogRunner.html)
-/// to the [`watchdog_run` function](https://docs.rs/embassy-task-watchdog/latest/embassy_task_watchdog/embassy_stm32/fn.watchdog_run.html)
+/// to your tasks to be able to feed the watchdog. Execute
+/// [`WatchdogRunner::run` function](https://docs.rs/embassy-task-watchdog/latest/embassy_task_watchdog/embassy_stm32/struct.Stm32WatchdogRunner.html)
 /// inside a spawned task to monitor the tasks and feed the hardware watchdog.
 macro_rules! create_watchdog {
     ($wdt: expr, $config: expr) => {{
@@ -344,9 +340,8 @@ macro_rules! create_watchdog {
 #[macro_export]
 /// Initialize the static memory for the watchdog, and return the watchdog and
 /// the watchdog runner task. Pass the [`TaskWatchdog` struct](https://docs.rs/embassy-task-watchdog/latest/embassy_task_watchdog/embassy_rp/struct.RpTaskWatchdog.html)
-/// to your tasks to be able to feed the watchdog. Pass the
-/// [`WatchdogRunner` struct](https://docs.rs/embassy-task-watchdog/latest/embassy_task_watchdog/embassy_rp/struct.RpWatchdogRunner.html)
-/// to the [`watchdog_run` function](https://docs.rs/embassy-task-watchdog/latest/embassy_task_watchdog/embassy_rp/fn.watchdog_run.html)
+/// to your tasks to be able to feed the watchdog. Execute the
+/// [`WatchdogRunner::run` function](https://docs.rs/embassy-task-watchdog/latest/embassy_task_watchdog/embassy_rp/struct.RpWatchdogRunner.html)
 /// inside a spawned task to monitor the tasks and feed the hardware watchdog.
 macro_rules! create_watchdog {
     ($wdt: expr, $config: expr) => {

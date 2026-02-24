@@ -2,9 +2,7 @@ use core::cell::RefCell;
 
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
 
-use crate::{
-    Error, HardwareWatchdog, MAX_TASKS, ResetReason, WatchdogConfig, debug, error, info, warn,
-};
+use crate::{HardwareWatchdog, MAX_TASKS, ResetReason, WatchdogConfig, debug, error, info, warn};
 
 /// Represents a task monitored by the watchdog.
 #[derive(Debug, Clone)]
@@ -90,16 +88,15 @@ impl<W: HardwareWatchdog> WatchdogContainer<W> {
         id: u32,
         name: &'static str,
         max_duration: embassy_time::Duration,
-    ) -> Result<(), Error> {
+    ) {
         // Find an empty slot
         if id >= MAX_TASKS as u32 {
-            return Err(Error::NoSlotsAvailable);
+            unreachable!("Task ID {} is out of bounds (max {})", id, MAX_TASKS - 1);
         }
         // SAFETY: We have already checked that the ID is within bounds, so this is safe.
         let slot = unsafe { self.tasks.get_unchecked_mut(id as usize) };
         *slot = Some(Task::new(name, max_duration));
         debug!("Registered task: {} ({})", id, name);
-        Ok(())
     }
 
     pub(crate) fn deregister_task(&mut self, id: u32) {
@@ -162,7 +159,7 @@ impl<W: HardwareWatchdog> WatchdogContainer<W> {
     }
 
     /// Trigger a system reset.
-    pub(crate) fn trigger_reset(&mut self, id: u32) -> ! {
+    pub(crate) fn trigger_reset(&mut self, id: u32, reason: Option<heapless::String<32>>) -> ! {
         #[allow(unused)]
         if let Some(task) = self
             .tasks
@@ -170,17 +167,22 @@ impl<W: HardwareWatchdog> WatchdogContainer<W> {
             .and_then(|slot| slot.as_mut())
         {
             warn!("Task {} ({}) is triggering a watchdog reset", id, task.name);
+        } else if id == MAX_TASKS as u32 {
+            warn!(
+                "Watchdog reset triggered by a TaskWatchdog (reason: {:?})",
+                reason
+            );
         } else {
             error!(
                 "Unknown task {} attempted to trigger a watchdog reset, resetting",
                 id
             );
         }
-        self.hw_watchdog.trigger_reset()
+        self.hw_watchdog.trigger_reset(reason)
     }
 
     /// Get the reason for the last reset.
-    pub(crate) fn reset_reason(&self) -> ResetReason {
+    pub(crate) fn reset_reason(&mut self) -> ResetReason {
         self.hw_watchdog.reset_reason()
     }
 }
@@ -209,8 +211,7 @@ impl<W: HardwareWatchdog> WatchdogOwner<W> {
             .lock()
             .await
             .borrow_mut()
-            .register_task(id, name, max_duration)
-            .ok();
+            .register_task(id, name, max_duration);
     }
 
     /// Deregister a task with the watchdog.
@@ -220,6 +221,7 @@ impl<W: HardwareWatchdog> WatchdogOwner<W> {
 
     /// Feed the watchdog for a specific task.
     pub(crate) async fn feed(&self, id: u32) {
+        debug!("Feeding watchdog for task ID {}", id);
         self.watchdog.lock().await.borrow_mut().feed(id);
     }
 
@@ -229,13 +231,17 @@ impl<W: HardwareWatchdog> WatchdogOwner<W> {
     }
 
     /// Trigger a system reset.
-    pub(crate) async fn trigger_reset(&self, id: u32) -> ! {
-        self.watchdog.lock().await.borrow_mut().trigger_reset(id)
+    pub(crate) async fn trigger_reset(&self, id: u32, reason: Option<heapless::String<32>>) -> ! {
+        self.watchdog
+            .lock()
+            .await
+            .borrow_mut()
+            .trigger_reset(id, reason)
     }
 
     /// Get the last reset reason.
     pub(crate) async fn reset_reason(&self) -> ResetReason {
-        self.watchdog.lock().await.borrow().reset_reason()
+        self.watchdog.lock().await.borrow_mut().reset_reason()
     }
 
     /// Get the check interval

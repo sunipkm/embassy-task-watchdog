@@ -6,7 +6,7 @@ macro_rules! impl_watchdog {
         use paste::paste;
         paste!{
             use $crate::runtime::WatchdogOwner;
-            /// The WatchdogRunner for this family of watchdogs.  This is the struct you pass to the [`watchdog_run`] function.
+            /// The WatchdogRunner for this family of watchdogs.
             pub struct [<$Family WatchdogRunner>] {
                 runner: &'static WatchdogOwner<[<$Family Watchdog>]>,
             }
@@ -21,31 +21,32 @@ macro_rules! impl_watchdog {
                 }
             }
 
-            /// Watchdog Runner function, which will monitor tasks and reset the
-            /// system if any.
-            ///
-            /// You must call this function from an async task to start and run the
-            /// watchdog.  Using `spawner.must_spawn(watchdog_run(watchdog))` would
-            /// likely be a good choice.
-            pub async fn watchdog_run(task: [<$Family WatchdogRunner>]) -> ! {
-                debug!("Watchdog runner started");
+            impl [<$Family WatchdogRunner>] {
+                /// Watchdog Runner function, which will monitor tasks and reset the
+                /// system if any.
+                ///
+                /// You must call this function in an [`embassy_executor::task`] to start and run the
+                /// watchdog. Using [`embassy_executor::Spawner::must_spawn`] would likely be a good choice.
+                pub async fn run(self) -> ! {
+                    debug!("Watchdog runner started");
 
-                // Start the watchdog
-                task.runner.start().await;
+                    // Start the watchdog
+                    self.runner.start().await;
 
-                // Get initial check interval
-                let interval = task.runner.get_check_interval().await;
-                let mut check_time = Instant::now() + interval;
+                    // Get initial check interval
+                    let interval = self.runner.get_check_interval().await;
+                    let mut check_time = Instant::now() + interval;
 
-                loop {
-                    // Check for starved tasks.  We don't do anthing based on the
-                    // return code as check_tasks() handles feeding/starving the
-                    // hardware watchdog.
-                    let _ = task.runner.check_tasks().await;
+                    loop {
+                        // Check for starved tasks.  We don't do anthing based on the
+                        // return code as check_tasks() handles feeding/starving the
+                        // hardware watchdog.
+                        let _ = self.runner.check_tasks().await;
 
-                    // Wait before checking again
-                    Timer::at(check_time).await;
-                    check_time += interval;
+                        // Wait before checking again
+                        Timer::at(check_time).await;
+                        check_time += interval;
+                    }
                 }
             }
 
@@ -91,8 +92,8 @@ macro_rules! impl_watchdog {
 
                 #[inline(always)]
                 /// Trigger a reset immediately. This is useful for testing and for tasks that want to trigger a reset on their own.
-                pub async fn trigger_reset(&self) -> ! {
-                    self.runner.trigger_reset(self.id).await
+                pub async fn trigger_reset(&self, reason: Option<heapless::String<32>>) -> ! {
+                    self.runner.trigger_reset(self.id, reason).await
                 }
             }
 
@@ -141,7 +142,7 @@ macro_rules! impl_watchdog {
             impl [<$Family TaskWatchdog>]{
                 #[inline(always)]
                 #[doc(hidden)]
-                pub async fn register_desc(
+                pub async fn _register_desc(
                     self,
                     name: &'static str,
                     id: u32,
@@ -155,6 +156,12 @@ macro_rules! impl_watchdog {
                 /// Get the reason for the last reset, if available.
                 pub async fn reset_reason(&self) -> ResetReason {
                     self.inner.reset_reason().await
+                }
+
+                #[inline(always)]
+                /// Trigger a watchdog reset.
+                pub async fn trigger_reset(&self, reason: Option<heapless::String<32>>) -> ! {
+                    self.inner.trigger_reset($crate::MAX_TASKS as u32, reason).await
                 }
             }
 

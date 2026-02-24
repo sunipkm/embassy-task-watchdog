@@ -85,6 +85,11 @@ let (watchdog, watchdogtask) = create_watchdog!(hw_watchdog, config);
 // Spawn the watchdog task itself
 spawner.must_spawn(watchdog_task(watchdogtask));
 
+#[embassy_executor::task]
+async fn watchdog_task(wdt: WatchdogRunner) -> ! {
+  wdt.run().await
+}
+
 // In your application tasks
 #[embassy_task_watchdog::task(timeout = Duration::from_millis(2000))]
 async fn main_task(watchdog: TaskWatchdog) -> ! {

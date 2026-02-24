@@ -5,7 +5,7 @@ use defmt::info;
 use embassy_executor::Spawner;
 use embassy_task_watchdog::{
     WatchdogConfig, create_watchdog,
-    embassy_stm32::{TaskWatchdog, WatchdogRunner, watchdog_run},
+    embassy_stm32::{TaskWatchdog, WatchdogRunner},
 };
 use embassy_time::{Duration, Timer};
 use {defmt_rtt as _, panic_probe as _};
@@ -28,7 +28,7 @@ async fn main(spawner: Spawner) {
 // Provide a simple embassy task for the watchdog
 #[embassy_executor::task]
 async fn watchdog_task(watchdog: WatchdogRunner) -> ! {
-    watchdog_run(watchdog).await
+    watchdog.run().await
 }
 // Implement your main task
 #[embassy_task_watchdog::task(timeout = Duration::from_millis(1500))]
@@ -40,10 +40,21 @@ async fn main_task(watchdog: TaskWatchdog) -> ! {
         Timer::after(Duration::from_millis(1000)).await;
     }
 }
-// Implement your second task
-#[embassy_task_watchdog::task(timeout = Duration::from_millis(2000))]
+// Implement your second task, which requires a long setup time
+#[embassy_task_watchdog::task(timeout = Duration::from_millis(2000), setup = true)]
 async fn second_task(watchdog: TaskWatchdog) -> ! {
+    // do some long running setup work
     let mut counter = 0;
+    Timer::after_secs(5).await;
+    // a for loop is allowed
+    for _ in 0..5 {
+        Timer::after(Duration::from_secs(1)).await;
+    }
+    // task is registered here
+    // Now enter the main loop of the task
+    // The loop must feed the watchdog before
+    // timeout expires, otherwise the watchdog
+    // will trigger a reset.
     loop {
         // Feed the watchdog
         if counter < 5 {
@@ -51,7 +62,7 @@ async fn second_task(watchdog: TaskWatchdog) -> ! {
             counter += 1;
         } else {
             info!("Resetting the watchdog");
-            watchdog.trigger_reset().await;
+            watchdog.trigger_reset(None).await;
         }
         // Do some work
         Timer::after(Duration::from_millis(2000)).await;

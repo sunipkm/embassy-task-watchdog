@@ -31,11 +31,11 @@ impl HardwareWatchdog for Stm32Watchdog {
         self.inner.pet();
     }
 
-    fn trigger_reset(&mut self) -> ! {
+    fn trigger_reset(&mut self, _reason: Option<heapless::String<32>>) -> ! {
         cortex_m::peripheral::SCB::sys_reset();
     }
 
-    fn reset_reason(&self) -> ResetReason {
+    fn reset_reason(&mut self) -> ResetReason {
         ResetReason::Unknown
     }
 }

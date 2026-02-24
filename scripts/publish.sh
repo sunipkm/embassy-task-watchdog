@@ -26,5 +26,13 @@ cd "$script_dir/embassy-task-watchdog" || exit 1
 echo "Building docs-rs documentation..."
 cargo install cargo-docs-rs
 cargo +nightly docs-rs || { echo "Failed to compile docs, exiting."; exit 1; }
+
+dry_run=$1
+
+# check if there are untracked/uncommitted changes
+if [[ -n $(git status --porcelain) ]]; then
+    echo "There are uncommitted changes in the repository. Running cargo publish in dry-run mode"
+    dry_run="--dry-run"
+fi
 echo "Publishing crate..."
-cargo publish --features dev-rp235xa,defmt-embassy-rp,dev-stm32c031c6,defmt-embassy-stm32,defmt --target thumbv8m.main-none-eabihf $1 $2
+cargo publish --features dev-rp235xa,defmt-embassy-rp,dev-stm32c031c6,defmt-embassy-stm32,defmt,defmt-messages --target thumbv8m.main-none-eabihf $dry_run

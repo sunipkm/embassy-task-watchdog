@@ -1,7 +1,10 @@
 # Change Log for `embassy-task-watchdog`
 
 ### v0.0.5
-
+- Removed the `watchdog_run` function in favor of `run` member function in the `WatchdogRunner` struct.
+- Removed `embassy-task-watchdog::Error`, since it was never propagated and running out of task slots was relegated
+  to a compile time error.
+- Leverage the watchdog scratch registers in RP2040/RP235xy to indicate which task caused reset.
 - Bumped `embassy-task-watchdog-macros` to `v0.0.3`.
 - Removed internal `TaskDesc` struct.
 - Removed separate `create_watchdog_*` macros, and consolidated the functionality into a single `create_watchdog` macro.

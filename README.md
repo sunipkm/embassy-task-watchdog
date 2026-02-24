@@ -98,7 +98,7 @@ spawner.must_spawn(watchdog_task(watchdogrunner));
 // Define the hardware watchdog runner task
 #[embassy_executor::task]
 async fn watchdog_task(wdtrunner: WatchdogRunner) -> ! {
-  watchdog_run(wdtrunner).await
+  wdtrunner.run().await
 }
 
 // In your application tasks

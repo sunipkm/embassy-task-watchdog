@@ -39,3 +39,4 @@ embassy-task-watchdog = { version = "0.0.5", path = "../../embassy-task-watchdog
     "defmt",
     "defmt-messages",
 ] }
+heapless = { version = "0.9", default-features = false, features = ["defmt"] }
