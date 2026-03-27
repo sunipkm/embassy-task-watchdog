@@ -21,7 +21,7 @@ embassy-rp = { version = "0.9", features = [
     "unstable-pac",
     "time-driver",
     "critical-section-impl",
-    "rp235xb",
+    "rp235xa",
 ] }
 
 embassy-task-watchdog = { version = "0.0.5", path = "../../embassy-task-watchdog", features = [

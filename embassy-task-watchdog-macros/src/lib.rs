@@ -15,6 +15,7 @@ struct TaskArgs {
     docs: Vec<syn::Attribute>,
     timeout: Expr,
     retries: Expr,
+    pool_size: usize,
     keep: bool,
     setup: bool,
     fallible: bool,
@@ -39,6 +40,7 @@ impl Parse for TaskArgs {
     fn parse(input: ParseStream) -> Result<Self> {
         let mut timeout: Option<Expr> = None;
         let mut retries: Option<Expr> = None;
+        let mut pool_size: Option<usize> = None;
         let mut keep = true;
         let mut setup = false;
         let mut fallible = false;
@@ -65,18 +67,21 @@ impl Parse for TaskArgs {
                 Some("fallible") => {
                     fallible = check_boolean_expr(&nv.value, "fallible")?;
                 }
+                Some("pool_size") => {
+                    pool_size = Some(parse_usize_expr(&nv.value, "pool_size")?);
+                }
                 Some(other) => {
                     return Err(syn::Error::new(
                         nv.path.span(),
                         format!(
-                            "unknown argument `{other}` (supported: timeout, retries, keep, setup, fallible)"
+                            "unknown argument `{other}` (supported: timeout, retries, keep, setup, fallible, pool_size)"
                         ),
                     ));
                 }
                 None => {
                     return Err(syn::Error::new(
                         nv.path.span(),
-                        "expected identifier key (supported: timeout, retries, keep, setup, fallible)",
+                        "expected identifier key (supported: timeout, retries, keep, setup, fallible, pool_size)",
                     ));
                 }
             }
@@ -96,7 +101,23 @@ impl Parse for TaskArgs {
                     lit: syn::Lit::Int(syn::LitInt::new("0", input.span())),
                 })
             }),
+            pool_size: pool_size.map(|v| v.max(1)).unwrap_or(1),
         })
+    }
+}
+
+fn parse_usize_expr(value: &Expr, arg: &str) -> Result<usize> {
+    match value {
+        Expr::Lit(syn::ExprLit {
+            lit: syn::Lit::Int(lit),
+            ..
+        }) => lit
+            .base10_parse::<usize>()
+            .map_err(|_| syn::Error::new(value.span(), format!("expected integer for `{arg}`"))),
+        _ => Err(syn::Error::new(
+            value.span(),
+            format!("expected integer for `{arg}`"),
+        )),
     }
 }
 
@@ -146,6 +167,11 @@ fn first_param_ident(fn_item: &ItemFn) -> Result<Ident> {
 ///   in cases where occasional delays are expected (e.g. `retries = 3` will allow 3 missed feeds before considering the task stalled).
 ///   By default, the watchdog will consider the task stalled
 ///   immediately upon a missed feed.
+/// - `pool_size`: The size of the task pool for this task, which determines how many instances of this task can run concurrently (*defaults to `1`*).
+///
+///   **Note:** This is passed to the underlying [`embassy_executor::task`](https://docs.embassy.dev/embassy-executor/git/cortex-m/attr.task.html) macro.
+///   Multiple spawned instances **do not** count towards the task limit, and **will not be independently monitored by the watchdog**. As long as **one** of
+///   the spawned instances is alive and feeding the watchdog, the task will be considered alive.
 ///
 /// # Function Requirements
 /// - The function must be `async` and return `!` (never), unless `fallible = true` is set, in which case it can return normally.
@@ -158,12 +184,13 @@ fn first_param_ident(fn_item: &ItemFn) -> Result<Ident> {
 ///   not be in a block (surrounded by `{}`).
 /// - If `keep = false` is set, the function should not be fallible, since it will deregister itself from the watchdog when it finishes,
 ///   and won't be around to feed it anymore - which will lead to timing out the watchdog.
+/// - If `pool_size > 1`, the function can be spawned multiple times concurrently, and multiple instances will not count towards the watchdog task limit.
+///   The task will be considered stalled **only if** all instances fail to feed within the timeout and retries.
 ///
 /// # Examples
 /// ### Simple Example
 ///
-/// Example usage for a task
-/// is shown below, that feeds the watchdog every 1000ms and is considered stalled if it goes more
+/// Example usage for a task is shown below, that feeds the watchdog every 1000ms and is considered stalled if it goes more
 /// than 2000ms without feeding:
 /// ```rust,no_run
 /// # #![no_std]
@@ -272,13 +299,15 @@ pub fn task(attr: TokenStream, item: TokenStream) -> TokenStream {
         body
     };
 
+    let pool_size = args.pool_size;
+
     // Generate the output tokens for the task function, which includes:
     // - A static task descriptor with the unique ID and function name
     // - Registering the watchdog runner reference as a bound watchdog with the descriptor and timeout
     // - The user body of the function, which now has access to the bound watchdog for feeding
     let expanded = quote! {
         #docs
-        #[embassy_executor::task]
+        #[embassy_executor::task(pool_size = #pool_size)]
         #vis #sig {
             #body
         }

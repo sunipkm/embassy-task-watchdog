@@ -1,5 +1,10 @@
 # Change Log for `embassy-task-watchdog-macros`
 
+### v0.0.4
+
+- Added `pool_size` argument used by `embassy_executor::task` macro.
+- Bumped version of `quote` package.
+
 ### v0.0.3
 
 - Added additional options (`setup`, `keep`, `fallible`) to the task macro:

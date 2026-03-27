@@ -1,6 +1,11 @@
 # Change Log for `embassy-task-watchdog`
 
+### v0.0.6
+
+- Bumped `embassy-task-watchdog-macros` to version `0.0.4`.
+
 ### v0.0.5
+
 - Removed the `watchdog_run` function in favor of `run` member function in the `WatchdogRunner` struct.
 - Removed `embassy-task-watchdog::Error`, since it was never propagated and running out of task slots was relegated
   to a compile time error.
