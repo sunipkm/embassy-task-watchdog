@@ -14,6 +14,7 @@ use syn::{
 struct TaskArgs {
     docs: Vec<syn::Attribute>,
     timeout: Expr,
+    setup_timeout: Option<Expr>,
     retries: Expr,
     pool_size: usize,
     keep: bool,
@@ -34,11 +35,13 @@ struct ParseResult {
     wd_ident: Ident,
     desc_id: u32,
     max_expr: Expr,
+    setup_max_expr: Option<Expr>,
 }
 
 impl Parse for TaskArgs {
     fn parse(input: ParseStream) -> Result<Self> {
         let mut timeout: Option<Expr> = None;
+        let mut setup_timeout: Option<Expr> = None;
         let mut retries: Option<Expr> = None;
         let mut pool_size: Option<usize> = None;
         let mut keep = true;
@@ -58,12 +61,14 @@ impl Parse for TaskArgs {
             match key.as_deref() {
                 Some("timeout") => timeout = Some(nv.value),
                 Some("retries") => retries = Some(nv.value),
+                Some("setup_timeout") => setup_timeout = Some(nv.value),
                 Some("keep") => {
                     keep = check_boolean_expr(&nv.value, "keep")?;
                 }
                 Some("setup") => {
                     setup = check_boolean_expr(&nv.value, "setup")?;
                 }
+
                 Some("fallible") => {
                     fallible = check_boolean_expr(&nv.value, "fallible")?;
                 }
@@ -86,12 +91,14 @@ impl Parse for TaskArgs {
                 }
             }
         }
-
+        // setup_timeout implies setup
+        setup |= setup_timeout.is_some();
         Ok(Self {
             docs,
             timeout: timeout.ok_or_else(|| {
                 syn::Error::new(input.span(), "missing required: timeout = <expr>")
             })?,
+            setup_timeout,
             keep,
             setup,
             fallible,
@@ -146,7 +153,7 @@ fn first_param_ident(fn_item: &ItemFn) -> Result<Ident> {
 
 #[proc_macro_attribute]
 /// This decorator macro replaces [`embassy_executor::task`](https://docs.embassy.dev/embassy-executor/git/cortex-m/attr.task.html)
-/// to create an async task that can be monitored by the task-watchdog.  
+/// to create an async task that can be monitored by the task-watchdog.
 ///
 /// # Arguments
 /// - `timeout`: The duration to wait for a feed before considering the task stalled (e.g. `timeout = Duration::from_millis(2000)`)
@@ -168,6 +175,7 @@ fn first_param_ident(fn_item: &ItemFn) -> Result<Ident> {
 ///   By default, the watchdog will consider the task stalled
 ///   immediately upon a missed feed.
 /// - `pool_size`: The size of the task pool for this task, which determines how many instances of this task can run concurrently (*defaults to `1`*).
+/// - `setup_timeout`: Sets a maximum duration for the setup part of a task. This sets `setup` to `true`.
 ///
 ///   **Note:** This is passed to the underlying [`embassy_executor::task`](https://docs.embassy.dev/embassy-executor/git/cortex-m/attr.task.html) macro.
 ///   Multiple spawned instances **do not** count towards the task limit, and **will not be independently monitored by the watchdog**. As long as **one** of
@@ -179,7 +187,7 @@ fn first_param_ident(fn_item: &ItemFn) -> Result<Ident> {
 ///   and the first parameter must be an identifier pattern (e.g. `wd: TaskWatchdog`).
 ///   The macro will convert this into a per-task bound watchdog ([`embassy_task_watchdog::BoundWatchdog`](https://docs.rs/embassy-task-watchdog/latest/embassy_task_watchdog/embassy_rp/struct.RpBoundWatchdog.html))
 ///   that the user can feed to indicate the task is still alive.
-/// - If `setup = true` is set, the function must contain at least one loop statement (e.g. `loop { ... }`) for the macro to split
+/// - If `setup = true` (or `setup_timeout` is set), the function must contain at least one loop statement (e.g. `loop { ... }`) for the macro to split
 ///   the setup and consume parts. Any code before the first loop will be considered setup code that runs once. The setup code should
 ///   not be in a block (surrounded by `{}`).
 /// - If `keep = false` is set, the function should not be fallible, since it will deregister itself from the watchdog when it finishes,
@@ -259,6 +267,7 @@ pub fn task(attr: TokenStream, item: TokenStream) -> TokenStream {
     let wd_ident = result.wd_ident;
     let desc_id = result.desc_id;
     let max_expr = result.max_expr;
+    let setup_max_expr = result.setup_max_expr;
     let docs = args.docs;
     let docs = if !docs.is_empty() {
         quote! { #(#docs)* }
@@ -268,14 +277,29 @@ pub fn task(attr: TokenStream, item: TokenStream) -> TokenStream {
     let retries = args.retries;
 
     let body = if let Some((setup, consume)) = broken {
-        quote! {
-            // info!("[{}] starting task, retries {:?}", ::core::stringify!(#fn_ident), #retries);
-            // Setup code before the loop, which is not monitored by the watchdog
-            #(#setup)*
-            // Register the watchdog after the setup code finishes
-            let #wd_ident = #wd_ident._register_desc(::core::stringify!(#fn_ident), #desc_id, #max_expr, #retries).await;
-            // Run the loop code, which has access to the bound watchdog for feeding, and is monitored for stalls
-            #(#consume)*
+        if let Some(setup_max) = setup_max_expr {
+            quote! {
+                // Setup the watchdog to run from the beginning, first with the initial setup duration
+                let #wd_ident = #wd_ident._register_desc(::core::stringify!(#fn_ident), #desc_id, #setup_max, #retries).await;
+                // Setup code before the loop, which does get monitored by the watchdog. The setup code does get access
+                // to the bound watchdog. Maybe we need to change this...
+                #(#setup)*
+                // Switch the task duration + feed the task
+                #wd_ident._set_new_task_duration(#desc_id, #max_expr).await;
+                // Run the loop code
+                #(#consume)*
+            }
+        } else {
+            // normal task
+            quote! {
+                // info!("[{}] starting task, retries {:?}", ::core::stringify!(#fn_ident), #retries);
+                // Setup code before the loop, which is not monitored by the watchdog
+                #(#setup)*
+                // Register the watchdog after the setup code finishes
+                let #wd_ident = #wd_ident._register_desc(::core::stringify!(#fn_ident), #desc_id, #max_expr, #retries).await;
+                // Run the loop code, which has access to the bound watchdog for feeding, and is monitored for stalls
+                #(#consume)*
+            }
         }
     } else {
         quote! {
@@ -389,6 +413,7 @@ fn analyze_task(args: &TaskArgs, f: ItemFn) -> Result<ParseResult> {
     let block = &f.block;
     // Extract the timeout expression from the macro arguments for later use in code generation
     let max_expr = args.timeout.clone();
+    let setup_max_expr = args.setup_timeout.clone();
     Ok(ParseResult {
         vis: vis.clone(),
         sig: sig.clone(),
@@ -398,6 +423,7 @@ fn analyze_task(args: &TaskArgs, f: ItemFn) -> Result<ParseResult> {
         wd_ident: wd_ident.clone(),
         desc_id,
         max_expr,
+        setup_max_expr,
     })
 }
 

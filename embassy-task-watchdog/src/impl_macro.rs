@@ -155,6 +155,12 @@ macro_rules! impl_watchdog {
                 }
 
                 #[inline(always)]
+                #[doc(hidden)]
+                pub async fn _set_new_task_duration(&self, id: u32, duration: Duration) {
+                    self.inner.set_new_duration(id, duration).await;
+                }
+
+                #[inline(always)]
                 /// Get the reason for the last reset, if available.
                 pub async fn reset_reason(&self) -> ResetReason {
                     self.inner.reset_reason().await

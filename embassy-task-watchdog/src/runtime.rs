@@ -1,6 +1,8 @@
 use core::cell::RefCell;
+use core::sync::atomic;
 
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, mutex::Mutex};
+use embassy_time::Duration;
 
 use crate::{HardwareWatchdog, MAX_TASKS, ResetReason, WatchdogConfig, debug, error, info, warn};
 
@@ -49,6 +51,15 @@ impl Task {
             && self.available == 0;
         self.available = self.available.saturating_sub(1);
         res
+    }
+
+    /// Sets a new max duration for the [`Task`], feeding the task.
+    fn set_new_duration(&mut self, new_duration: embassy_time::Duration) {
+        self.feed();
+        // This fence ensures that the feed happens first and doesn't get reordered by the compiler.
+        // I'm not sure if it's actually necessary, but it's good for clarity
+        atomic::compiler_fence(atomic::Ordering::Release);
+        self.max_duration = new_duration;
     }
 }
 
@@ -198,6 +209,14 @@ impl<W: HardwareWatchdog> WatchdogContainer<W> {
     pub(crate) fn reset_reason(&mut self) -> ResetReason {
         self.hw_watchdog.reset_reason()
     }
+
+    /// Sets a new duration for the task, feeding the task to reset its timer
+    pub(crate) fn set_new_duration(&mut self, id: u32, duration: Duration) {
+        self.tasks
+            .get_mut(id as usize)
+            .and_then(|slot| slot.as_mut())
+            .map(|task| task.set_new_duration(duration));
+    }
 }
 
 pub(crate) struct WatchdogOwner<W: HardwareWatchdog> {
@@ -266,5 +285,14 @@ impl<W: HardwareWatchdog> WatchdogOwner<W> {
     /// Check if any tasks have starved
     pub(crate) async fn check_tasks(&self) -> bool {
         self.watchdog.lock().await.borrow_mut().check()
+    }
+
+    /// Sets a new duration for the task, feeding the task to reset its timer
+    pub(crate) async fn set_new_duration(&self, id: u32, duration: embassy_time::Duration) {
+        self.watchdog
+            .lock()
+            .await
+            .borrow_mut()
+            .set_new_duration(id, duration);
     }
 }
