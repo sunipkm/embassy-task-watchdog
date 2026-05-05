@@ -168,6 +168,17 @@ impl<W: HardwareWatchdog> WatchdogContainer<W> {
         self.tasks.iter_mut().flatten().for_each(|task| {
             if task.is_starved() {
                 error!("Task {} has starved the watchdog", task.name);
+                if W::_reason_supported() {
+                    self.hw_watchdog
+                        ._write_reason(Some(heapless::format!("Empty").unwrap()));
+                    let mut reason = heapless::String::<32>::new();
+                    for c in task.name.chars() {
+                        if reason.push(c).is_err() {
+                            break;
+                        }
+                    }
+                    self.hw_watchdog._write_reason(Some(reason));
+                }
                 starved = true;
             }
         });

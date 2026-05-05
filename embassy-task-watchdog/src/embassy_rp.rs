@@ -20,19 +20,9 @@ impl RpWatchdog {
             inner: RpWatchdogDevice::new(peripheral),
         }
     }
-}
 
-/// Implement the HardwareWatchdog trait for the RP2040/RP2350 watchdog.
-impl HardwareWatchdog for RpWatchdog {
-    fn start(&mut self, timeout: Duration) {
-        self.inner.start(timeout);
-    }
-
-    fn feed(&mut self) {
-        self.inner.feed();
-    }
-
-    fn trigger_reset(&mut self, reason: Option<String<32>>) -> ! {
+    #[inline(always)]
+    pub(crate) fn write_reason_str(&mut self, reason: Option<String<32>>) {
         let reason = reason.unwrap_or_else(|| String::from_str("Unknown").unwrap());
         debug!("Triggering reset with reason: {}", reason);
         // Zero out the scratch registers
@@ -46,6 +36,33 @@ impl HardwareWatchdog for RpWatchdog {
             let value = u32::from_le_bytes(scratch);
             self.inner.set_scratch(idx, value);
         }
+    }
+
+    fn read_reason_str(&mut self) -> String<32> {
+        let mut reason_bytes = Vec::<u8, 32>::new();
+        for idx in 0..8 {
+            let value = self.inner.get_scratch(idx);
+            // SAFETY: There are 8, u32 scratch registers, so we can safely read them into a 32-byte buffer.
+            reason_bytes
+                .extend_from_slice(&value.to_le_bytes())
+                .unwrap();
+        }
+        String::from_utf8(reason_bytes).unwrap_or_else(|_| String::from_str("Unknown").unwrap())
+    }
+}
+
+/// Implement the HardwareWatchdog trait for the RP2040/RP2350 watchdog.
+impl HardwareWatchdog for RpWatchdog {
+    fn start(&mut self, timeout: Duration) {
+        self.inner.start(timeout);
+    }
+
+    fn feed(&mut self) {
+        self.inner.feed();
+    }
+
+    fn trigger_reset(&mut self, reason: Option<String<32>>) -> ! {
+        self.write_reason_str(reason);
         // Trigger system reset
         self.inner.trigger_reset();
         panic!("Triggering reset via watchdog failed");
@@ -56,19 +73,23 @@ impl HardwareWatchdog for RpWatchdog {
             .reset_reason()
             .map(|reason| match reason {
                 embassy_rp::watchdog::ResetReason::Forced => {
-                    let mut msg = Vec::new();
-                    for index in 0..8 {
-                        let scratch = self.inner.get_scratch(index);
-                        // SAFETY: There are 8, u32 scratch registers, so we can safely read them into a 32-byte buffer.
-                        msg.extend_from_slice(&scratch.to_le_bytes()).unwrap();
-                    }
-                    ResetReason::Forced(
-                        String::from_utf8(msg).unwrap_or(String::from_str("Unknown").unwrap()),
-                    )
+                    ResetReason::Forced(self.read_reason_str())
                 }
-                embassy_rp::watchdog::ResetReason::TimedOut => ResetReason::TimedOut,
+                embassy_rp::watchdog::ResetReason::TimedOut => {
+                    ResetReason::TimedOut(self.read_reason_str())
+                }
             })
             .unwrap_or(ResetReason::None)
+    }
+
+    #[inline(always)]
+    fn _write_reason(&mut self, reason: Option<heapless::String<32>>) {
+        self.write_reason_str(reason);
+    }
+
+    #[inline(always)]
+    fn _reason_supported() -> bool {
+        true
     }
 }
 

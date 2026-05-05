@@ -38,6 +38,14 @@ impl HardwareWatchdog for Stm32Watchdog {
     fn reset_reason(&mut self) -> ResetReason {
         ResetReason::Unknown
     }
+
+    #[inline(always)]
+    fn _write_reason(&mut self, _reason: Option<heapless::String<32>>) {}
+
+    #[inline(always)]
+    fn _reason_supported() -> bool {
+        false
+    }
 }
 
 crate::impl_watchdog!(Stm32);

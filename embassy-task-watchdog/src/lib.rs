@@ -203,6 +203,14 @@ pub trait HardwareWatchdog {
 
     /// Get the reason for the last reset, if available.
     fn reset_reason(&mut self) -> ResetReason;
+
+    /// Write name of the task that starved the watchdog into the scratch registers, to be retrieved after reset.
+    #[doc(hidden)]
+    fn _write_reason(&mut self, reason: Option<heapless::String<32>>);
+
+    /// Whether this hardware watchdog supports writing and reading reset reasons.
+    #[doc(hidden)]
+    fn _reason_supported() -> bool;
 }
 
 /// Represents the reason for a system reset.
@@ -210,15 +218,17 @@ pub trait HardwareWatchdog {
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum ResetReason {
     /// Reset was forced by software.
+    /// The string contains the reason provided when triggering the reset, if supported by the hardware watchdog implementation.
     Forced(heapless::String<32>),
 
     /// Reset was caused by watchdog timeout.
-    TimedOut,
+    /// The string contains the name of the task that starved the watchdog, if supported by the hardware watchdog implementation.
+    TimedOut(heapless::String<32>),
 
     /// Reset was caused by an unknown reason.
     Unknown,
 
-    /// No reset has occurred since the last time the reason was cleared.
+    /// No reset has occurred since the last time the watchdog was cleared.
     None,
 }
 

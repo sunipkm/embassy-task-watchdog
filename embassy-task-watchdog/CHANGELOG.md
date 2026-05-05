@@ -1,5 +1,9 @@
 # Change Log for `embassy-task-watchdog`
 
+### v0.0.8
+
+- Added reset reason string to `TimedOut`.
+
 ### v0.0.7
 
 - Bumped `embassy-task-watchdog-macros` to version `0.0.5`.
