@@ -50,7 +50,7 @@ async fn main_task(watchdog: TaskWatchdog) -> ! {
 }
 
 // Implement your second task, which requires a long setup time
-#[embassy_task_watchdog::task(timeout = Duration::from_millis(2000), setup = true)]
+#[embassy_task_watchdog::task(timeout = Duration::from_millis(2000), setup_timeout = Duration::from_secs(10))]
 async fn second_task(watchdog: TaskWatchdog) -> ! {
     info!("Starting second task, doing setup work...");
     // do some long running setup work

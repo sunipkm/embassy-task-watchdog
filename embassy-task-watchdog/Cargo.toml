@@ -1,6 +1,6 @@
 [package]
 name = "embassy-task-watchdog"
-version = "0.0.6"
+version = "0.0.7"
 edition = "2024"
 authors = ["Sunip K. Mukherjee <sunipkmukherjee@gmail.com>"]
 description = "A robust, flexible watchdog management library for embedded systems that multiplexes multiple task watchdogs into a single hardware watchdog timer, preventing system lockups when tasks fail to respond"
@@ -52,7 +52,7 @@ embassy-stm32 = { version = "0.5", default-features = false, features = [
   "unstable-pac",
 ], optional = true }
 embassy-sync = { version = "0.7" }
-embassy-task-watchdog-macros = { path = "../embassy-task-watchdog-macros", version = "0.0.4" }
+embassy-task-watchdog-macros = { path = "../embassy-task-watchdog-macros", version = "0.0.5" }
 embassy-task-watchdog-numtasks = { path = "../embassy-task-watchdog-numtasks", version = "0.0.1" }
 embassy-time = { version = "0.5", default-features = false }
 heapless = { version = "0.9", default-features = false }

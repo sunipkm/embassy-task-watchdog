@@ -1,5 +1,9 @@
 # Change Log for `embassy-task-watchdog`
 
+### v0.0.7
+
+- Bumped `embassy-task-watchdog-macros` to version `0.0.5`.
+
 ### v0.0.6
 
 - Bumped `embassy-task-watchdog-macros` to version `0.0.4`.

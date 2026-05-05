@@ -86,6 +86,15 @@ macro_rules! impl_watchdog {
                 }
 
                 #[inline(always)]
+                #[doc(hidden)]
+                /// Set a new duration for this task.
+                /// This can be used to change the timeout duration
+                /// for a task after it has been registered.
+                pub async fn _set_new_task_duration(&self, duration: Duration) {
+                    self.runner.set_new_duration(self.id, duration).await
+                }
+
+                #[inline(always)]
                 /// Get the reason for the last reset, if available.
                 pub async fn reset_reason(&self) -> ResetReason {
                     self.runner.reset_reason().await
@@ -152,12 +161,6 @@ macro_rules! impl_watchdog {
                 ) -> [<$Family BoundWatchdog>]<'static> {
                     self.inner.register_task(id, name, max_duration, retries).await;
                     [<$Family BoundWatchdog>]::new(self.inner, id)
-                }
-
-                #[inline(always)]
-                #[doc(hidden)]
-                pub async fn _set_new_task_duration(&self, id: u32, duration: Duration) {
-                    self.inner.set_new_duration(id, duration).await;
                 }
 
                 #[inline(always)]

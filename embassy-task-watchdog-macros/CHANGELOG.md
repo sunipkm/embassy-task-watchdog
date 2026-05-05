@@ -1,5 +1,9 @@
 # Change Log for `embassy-task-watchdog-macros`
 
+### v0.0.5
+
+- Fixed a bug where the `_set_new_task_duration` was set on the wrong type (`TaskWatchdog` vs `BoundWatchdog`).
+
 ### v0.0.4
 
 - Added `pool_size` argument used by `embassy_executor::task` macro.

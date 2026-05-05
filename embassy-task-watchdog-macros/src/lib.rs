@@ -284,9 +284,10 @@ pub fn task(attr: TokenStream, item: TokenStream) -> TokenStream {
                 // Setup code before the loop, which does get monitored by the watchdog. The setup code does get access
                 // to the bound watchdog. Maybe we need to change this...
                 #(#setup)*
+                // Feed the task + switch to the main loop duration
+                #wd_ident._set_new_task_duration(#max_expr).await;
+                // Feed once more to reset the watchdog timer after switching the duration, since the setup code may have taken a while and we don't want it to trigger a false positive stall detection right when we switch to the main loop duration. This also gives the user the option to feed during setup if they want, which can be useful if the setup is expected to take a long time.
                 #wd_ident.feed().await;
-                // Switch the task duration + feed the task
-                #wd_ident._set_new_task_duration(#desc_id, #max_expr).await;
                 // Run the loop code
                 #(#consume)*
             }
