@@ -4,6 +4,7 @@
 
 - Added `pool_size` argument used by `embassy_executor::task` macro.
 - Bumped version of `quote` package.
+- Added a setup timeout, so that setups are also watched.
 
 ### v0.0.3
 
