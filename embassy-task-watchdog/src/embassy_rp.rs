@@ -82,7 +82,6 @@ impl HardwareWatchdog for RpWatchdog {
             .unwrap_or(ResetReason::None)
     }
 
-    #[inline(always)]
     fn _write_reason(&mut self, reason: Option<heapless::String<32>>) {
         self.write_reason_str(reason);
     }
