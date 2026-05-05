@@ -8,98 +8,14 @@ documentation = "https://docs.rs/embassy-task-watchdog"
 repository = "https://github.com/sunipkm/embassy-task-watchdog"
 license = "MIT OR Apache-2.0"
 keywords = [
-  "watchdog",
   "embassy",
   "no_std",
   "rp",
   "stm32",
+  "watchdog",
 ]
-categories = ["embedded", "no-std", "asynchronous", "hardware-support"]
+categories = ["asynchronous", "embedded", "hardware-support", "no-std"]
 readme = "README.md"
-
-
-[features]
-# Default features (none)
-default = []
-
-# Development features - enable support for specific chips when developing on those chips.  Note that these features are not intended for use in production code, and may include additional dependencies and features that are not necessary for production use.
-dev-stm32c031c6 = ["stm32", "embassy-stm32/stm32c031c6"]
-
-# STM32 support - enable chip-specific features to target the specific chip with `embassy-stm32` in your Cargo.toml.  Note that some features (e.g. `defmt-embassy-stm32`) may require additional features to be enabled (e.g. `defmt-embassy`).
-stm32 = [
-  "dep:embassy-stm32",
-  "cortex-m/critical-section-single-core",
-  "embassy-executor/arch-cortex-m",
-  "embassy-executor/executor-thread",
-  "dep:panic-probe",
-]
-defmt-embassy-stm32 = [
-  "defmt-embassy",
-  "embassy-stm32/defmt",
-  "panic-probe/print-defmt",
-]
-
-# Development features for RP2350 - enable support for RP2350 when developing on that chip.  Note that this feature is not intended for use in production code, and may include additional dependencies and features that are not necessary for production use.
-dev-rp235xa = ["rp", "embassy-rp/rp235xa"]
-
-# RP2040/RP2350 support - enable feature `rp2040`, `rp235xa` or `rp235xb` to target the specific chip
-# with `embassy-rp` in your Cargo.toml to add support for the specific chip.
-rp = ["dep:embassy-rp"]
-
-# Use alongside rp2040/rp2350/stm32/esp32-embassy to add defmt support 
-defmt-embassy-rp = [
-  "defmt-embassy",
-  "dep:embassy-rp",
-  "embassy-rp/defmt",
-  "embassy-executor/executor-thread",
-  "embassy-executor/executor-interrupt",
-]
-
-# Allow internal states to be logged with defmt
-defmt = ["dep:defmt", "embassy-time/defmt", "heapless/defmt"]
-
-# Log internal operations with defmt messages
-defmt-messages = ["defmt"]
-
-# The following features are used internally - do not specify explicitly
-defmt-embassy = [
-  "dep:defmt",
-  "defmt",
-  "embassy-executor/defmt",
-  "embassy-sync/defmt",
-  "embassy-time/defmt",
-]
-
-[dependencies]
-defmt = { version = "1.0", optional = true }
-embassy-sync = { version = "0.7" }
-embassy-time = { version = "0.5", default-features = false }
-embassy-executor = { version = "0.9", features = ["arch-cortex-m"] }
-embassy-rp = { version = "0.9", features = [
-  "time-driver",
-  "unstable-pac",
-], optional = true, default-features = false }
-embassy-stm32 = { version = "0.5", features = [
-  "unstable-pac",
-  "exti",
-  "chrono",
-], default-features = false, optional = true }
-embassy-embedded-hal = { version = "0.5" }
-portable-atomic = { version = "1.10", default-features = false }
-cortex-m = { version = "0.7", features = ["inline-asm"] }
-cortex-m-rt = { version = "0.7" }
-critical-section = { version = "1.2" }
-embassy-task-watchdog-numtasks = { version = "0.0.1", path = "../embassy-task-watchdog-numtasks" }
-embassy-task-watchdog-macros = { version = "0.0.4", path = "../embassy-task-watchdog-macros" }
-panic-probe = { version = "1.0", optional = true }
-static_cell = "2.1"
-paste = { version = "1.0" }
-heapless = { version = "0.9", default-features = false }
-
-[lib]
-name = "embassy_task_watchdog"
-path = "src/lib.rs"
-test = false
 
 [package.metadata.docs.rs]
 # Due to limitations in docs.rs, we need to specify features/targets.  This
@@ -113,3 +29,86 @@ features = [
   "defmt",
 ]
 targets = ["thumbv8m.main-none-eabihf"]
+
+[lib]
+name = "embassy_task_watchdog"
+path = "src/lib.rs"
+test = false
+
+[dependencies]
+cortex-m = { version = "0.7", features = ["inline-asm"] }
+cortex-m-rt = { version = "0.7" }
+critical-section = { version = "1.2" }
+defmt = { version = "1.0", optional = true }
+embassy-embedded-hal = { version = "0.5" }
+embassy-executor = { version = "0.9", features = ["arch-cortex-m"] }
+embassy-rp = { version = "0.9", default-features = false, features = [
+  "time-driver",
+  "unstable-pac",
+], optional = true }
+embassy-stm32 = { version = "0.5", default-features = false, features = [
+  "chrono",
+  "exti",
+  "unstable-pac",
+], optional = true }
+embassy-sync = { version = "0.7" }
+embassy-task-watchdog-macros = { path = "../embassy-task-watchdog-macros", version = "0.0.4" }
+embassy-task-watchdog-numtasks = { path = "../embassy-task-watchdog-numtasks", version = "0.0.1" }
+embassy-time = { version = "0.5", default-features = false }
+heapless = { version = "0.9", default-features = false }
+panic-probe = { version = "1.0", optional = true }
+paste = { version = "1.0" }
+portable-atomic = { version = "1.10", default-features = false }
+static_cell = "2.1"
+
+[features]
+# Default features (none)
+default = []
+
+# Development features - enable support for specific chips when developing on those chips.  Note that these features are not intended for use in production code, and may include additional dependencies and features that are not necessary for production use.
+dev-stm32c031c6 = ["embassy-stm32/stm32c031c6", "stm32"]
+
+defmt-embassy-stm32 = [
+  "defmt-embassy",
+  "embassy-stm32/defmt",
+  "panic-probe/print-defmt",
+]
+# STM32 support - enable chip-specific features to target the specific chip with `embassy-stm32` in your Cargo.toml.  Note that some features (e.g. `defmt-embassy-stm32`) may require additional features to be enabled (e.g. `defmt-embassy`).
+stm32 = [
+  "cortex-m/critical-section-single-core",
+  "dep:embassy-stm32",
+  "dep:panic-probe",
+  "embassy-executor/arch-cortex-m",
+  "embassy-executor/executor-thread",
+]
+
+# Development features for RP2350 - enable support for RP2350 when developing on that chip.  Note that this feature is not intended for use in production code, and may include additional dependencies and features that are not necessary for production use.
+dev-rp235xa = ["embassy-rp/rp235xa", "rp"]
+
+# RP2040/RP2350 support - enable feature `rp2040`, `rp235xa` or `rp235xb` to target the specific chip
+# with `embassy-rp` in your Cargo.toml to add support for the specific chip.
+rp = ["dep:embassy-rp"]
+
+# Use alongside rp2040/rp2350/stm32/esp32-embassy to add defmt support
+defmt-embassy-rp = [
+  "defmt-embassy",
+  "dep:embassy-rp",
+  "embassy-executor/executor-interrupt",
+  "embassy-executor/executor-thread",
+  "embassy-rp/defmt",
+]
+
+# Allow internal states to be logged with defmt
+defmt = ["dep:defmt", "embassy-time/defmt", "heapless/defmt"]
+
+# Log internal operations with defmt messages
+defmt-messages = ["defmt"]
+
+# The following features are used internally - do not specify explicitly
+defmt-embassy = [
+  "defmt",
+  "dep:defmt",
+  "embassy-executor/defmt",
+  "embassy-sync/defmt",
+  "embassy-time/defmt",
+]
