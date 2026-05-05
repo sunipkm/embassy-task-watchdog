@@ -24,6 +24,9 @@ done
 cd "$script_dir/embassy-task-watchdog" || exit 1
 
 echo "Building docs-rs documentation..."
+rustup target add thumbv8m.main-none-eabihf --toolchain nightly || { echo "Failed to add target, exiting."; exit 1; }
+rustup target add thumbv7m-none-eabi --toolchain nightly || { echo "Failed to add target, exiting."; exit 1; }
+rustup target add thumbv6m-none-eabi --toolchain nightly || { echo "Failed to add target, exiting."; exit 1; }
 cargo install cargo-docs-rs
 cargo +nightly docs-rs || { echo "Failed to compile docs, exiting."; exit 1; }
 

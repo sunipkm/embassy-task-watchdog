@@ -212,10 +212,13 @@ impl<W: HardwareWatchdog> WatchdogContainer<W> {
 
     /// Sets a new duration for the task, feeding the task to reset its timer
     pub(crate) fn set_new_duration(&mut self, id: u32, duration: Duration) {
-        self.tasks
+        if let Some(task) = self
+            .tasks
             .get_mut(id as usize)
             .and_then(|slot| slot.as_mut())
-            .map(|task| task.set_new_duration(duration));
+        {
+            task.set_new_duration(duration)
+        }
     }
 }
 

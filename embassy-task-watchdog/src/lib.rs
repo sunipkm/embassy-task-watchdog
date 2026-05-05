@@ -236,15 +236,7 @@ pub struct WatchdogConfig {
     pub(crate) check_interval: Duration,
 }
 
-impl WatchdogConfig {
-    /// Create a new configuration with specified timeout values
-    pub fn new(hardware_timeout: Duration, check_interval: Duration) -> Self {
-        Self {
-            hardware_timeout,
-            check_interval,
-        }
-    }
-
+impl Default for WatchdogConfig {
     /// Create a default configuration with standard timeout values:
     /// - Hardware timeout: 5000ms
     /// - Check interval: 1000ms
@@ -253,12 +245,13 @@ impl WatchdogConfig {
     }
 }
 
-impl Default for WatchdogConfig {
-    /// Create a default configuration with standard timeout values:
-    /// - Hardware timeout: 5000ms
-    /// - Check interval: 1000ms
-    fn default() -> Self {
-        Self::default()
+impl WatchdogConfig {
+    /// Create a new configuration with specified timeout values
+    pub fn new(hardware_timeout: Duration, check_interval: Duration) -> Self {
+        Self {
+            hardware_timeout,
+            check_interval,
+        }
     }
 }
 
