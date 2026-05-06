@@ -38,4 +38,4 @@ if [[ -n $(git status --porcelain) ]]; then
     dry_run="--dry-run"
 fi
 echo "Publishing crate..."
-cargo publish --features dev-rp235xa,defmt-embassy-rp,dev-stm32c031c6,defmt-embassy-stm32,defmt,defmt-messages --target thumbv8m.main-none-eabihf $dry_run
+cargo publish --features dev-rp235xa,defmt-embassy-rp,defmt,defmt-messages $dry_run
