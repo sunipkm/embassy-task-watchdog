@@ -22,9 +22,7 @@ readme = "README.md"
 # means that full documentation for all features won't be provided.
 features = [
   "dev-rp235xa",
-  "dev-stm32c031c6",
   "defmt-embassy-rp",
-  "defmt-embassy-stm32",
   "defmt-messages",
   "defmt",
 ]
