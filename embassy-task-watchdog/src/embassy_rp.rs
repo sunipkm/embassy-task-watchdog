@@ -10,6 +10,7 @@ use heapless::{String, Vec};
 /// RP2040/RP2350-specific watchdog implementation.
 pub(crate) struct RpWatchdog {
     inner: RpWatchdogDevice,
+    timeout: Duration,
 }
 
 impl RpWatchdog {
@@ -18,6 +19,7 @@ impl RpWatchdog {
     pub(crate) fn new(peripheral: Peri<'static, RpWatchdogPeripheral>) -> Self {
         Self {
             inner: RpWatchdogDevice::new(peripheral),
+            timeout: Duration::from_micros(1_000_000), // Default timeout of 1 second
         }
     }
 
@@ -54,11 +56,12 @@ impl RpWatchdog {
 /// Implement the HardwareWatchdog trait for the RP2040/RP2350 watchdog.
 impl HardwareWatchdog for RpWatchdog {
     fn start(&mut self, timeout: Duration) {
+        self.timeout = timeout;
         self.inner.start(timeout);
     }
 
     fn feed(&mut self) {
-        self.inner.feed();
+        self.inner.feed(self.timeout);
     }
 
     fn trigger_reset(&mut self, reason: Option<String<32>>) -> ! {

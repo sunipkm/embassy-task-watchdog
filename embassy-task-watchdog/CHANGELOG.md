@@ -1,5 +1,9 @@
 # Change Log for `embassy-task-watchdog`
 
+### v0.0.9
+
+- Bumped versions of embassy-rp and embassy-stm32.
+
 ### v0.0.8
 
 - Added reset reason string to `TimedOut`.
