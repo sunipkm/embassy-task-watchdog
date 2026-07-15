@@ -1,5 +1,9 @@
 # Change Log for `embassy-task-watchdog`
 
+### v0.1.0
+
+- Bumped version of embassy-executor to v0.10.
+
 ### v0.0.9
 
 - Bumped versions of embassy-rp and embassy-stm32.
