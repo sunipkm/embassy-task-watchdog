@@ -24,11 +24,11 @@ async fn main(spawner: Spawner) {
     // Check the last reset reason and print it
     info!("Last reset reason: {}", watchdog.reset_reason().await);
     // Spawn tasks that will feed the watchdog
-    spawner.must_spawn(main_task(watchdog));
-    spawner.must_spawn(second_task(watchdog));
+    spawner.spawn(defmt::unwrap!(main_task(watchdog)));
+    spawner.spawn(defmt::unwrap!(second_task(watchdog)));
     // Finally spawn the watchdog - this will start the hardware watchdog, and feed it
     // for as long as _all_ tasks are healthy.
-    spawner.must_spawn(watchdog_task(watchdogtask));
+    spawner.spawn(defmt::unwrap!(watchdog_task(watchdogtask)));
 }
 
 // Provide a simple embassy task for the watchdog

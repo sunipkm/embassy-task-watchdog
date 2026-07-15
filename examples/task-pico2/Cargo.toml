@@ -6,8 +6,8 @@ edition = "2024"
 [dependencies]
 embassy-embedded-hal = { version = "0.6", features = ["defmt"] }
 embassy-sync = { version = "0.8", features = ["defmt"] }
-embassy-executor = { version = "0.9", features = [
-    "arch-cortex-m",
+embassy-executor = { version = "0.10", features = [
+    "platform-cortex-m",
     "executor-thread",
     "executor-interrupt",
     "defmt",
@@ -24,7 +24,7 @@ embassy-rp = { version = "0.10", features = [
     "rp235xa",
 ] }
 
-embassy-task-watchdog = { version = "0.0.9", path = "../../embassy-task-watchdog", features = [
+embassy-task-watchdog = { version = "0.1.0", path = "../../embassy-task-watchdog", features = [
     "rp",
     "defmt",
     "defmt-messages",

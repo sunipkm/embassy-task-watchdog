@@ -21,8 +21,8 @@ defmt = "1.0"
 defmt-rtt = "1.0"
 panic-probe = { version = "1.0", features = ["print-defmt"] }
 embassy-sync = { version = "0.8", features = ["defmt"] }
-embassy-executor = { version = "0.9", features = [
-    "arch-cortex-m",
+embassy-executor = { version = "0.10", features = [
+    "platform-cortex-m",
     "executor-thread",
     "executor-interrupt",
     "defmt",
@@ -35,7 +35,7 @@ embassy-time = { version = "0.5", features = [
 embedded-hal-1 = { package = "embedded-hal", version = "1.0" }
 static_cell = "2"
 portable-atomic = { version = "1.5", features = ["unsafe-assume-single-core"] }
-embassy-task-watchdog = { version = "0.0.9", path = "../../embassy-task-watchdog", features = [
+embassy-task-watchdog = { version = "0.1.0", path = "../../embassy-task-watchdog", features = [
     "defmt",
     "stm32",
 ] }
