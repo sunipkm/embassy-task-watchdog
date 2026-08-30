@@ -55,7 +55,7 @@ The library supports the embassy-executor asynchronous API.
 To use in your project, add the following line to your `Cargo.toml` file:
 
 ```toml
-embassy-task-watchdog = { version = "0.0.2", features = ["rp"] } # additionally, supports defmt for logging, stm32 for STM32 devices...
+embassy-task-watchdog = { version = "0.1.1", features = ["rp"] } # additionally, supports defmt for logging, stm32 for STM32 devices...
 ```
 
 ### 🛠️ Features

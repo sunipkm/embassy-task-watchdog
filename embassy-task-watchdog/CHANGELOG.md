@@ -1,5 +1,9 @@
 # Change Log for `embassy-task-watchdog`
 
+### v0.1.1
+
+- Removed `platform-cortex-m` feature from this repo on `embassy-executor`.
+
 ### v0.1.0
 
 - Bumped version of embassy-executor to v0.10.
